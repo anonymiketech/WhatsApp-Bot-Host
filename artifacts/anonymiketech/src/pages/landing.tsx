@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Link } from "wouter";
-import { Bot, Terminal, Shield, Zap, ArrowRight, Server } from "lucide-react";
+import { Bot, Shield, Zap, ArrowRight, Server } from "lucide-react";
 import { motion } from "framer-motion";
+import { AuthModal } from "@/components/auth/auth-modal";
 
 export default function Landing() {
-  const { isAuthenticated, login, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  const [authModal, setAuthModal] = useState<"sign-in" | "sign-up" | null>(null);
 
   return (
     <div className="min-h-screen bg-background overflow-hidden relative">
@@ -32,19 +35,27 @@ export default function Landing() {
             </span>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {!isLoading && (
               isAuthenticated ? (
-                <Link href="/dashboard" className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold transition-colors">
+                <Link href="/dashboard" className="px-6 py-2.5 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.3)] rounded-lg text-sm font-bold transition-all">
                   Dashboard
                 </Link>
               ) : (
-                <button 
-                  onClick={login}
-                  className="px-6 py-2.5 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.3)] rounded-lg text-sm font-bold transition-all"
-                >
-                  Log In
-                </button>
+                <>
+                  <button 
+                    onClick={() => setAuthModal("sign-in")}
+                    className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Sign In
+                  </button>
+                  <button 
+                    onClick={() => setAuthModal("sign-up")}
+                    className="px-5 py-2.5 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.3)] rounded-lg text-sm font-bold transition-all"
+                  >
+                    Sign Up
+                  </button>
+                </>
               )
             )}
           </div>
@@ -95,12 +106,20 @@ export default function Landing() {
                   Launch Console <ArrowRight className="w-5 h-5" />
                 </Link>
               ) : (
-                <button 
-                  onClick={login}
-                  className="px-8 py-4 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(0,229,153,0.4)] rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
-                >
-                  Start Hosting Now <ArrowRight className="w-5 h-5" />
-                </button>
+                <>
+                  <button 
+                    onClick={() => setAuthModal("sign-up")}
+                    className="px-8 py-4 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(0,229,153,0.4)] rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    Start Hosting Now <ArrowRight className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setAuthModal("sign-in")}
+                    className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    Sign In
+                  </button>
+                </>
               )
             )}
           </motion.div>
@@ -128,6 +147,18 @@ export default function Landing() {
           </motion.div>
         </main>
       </div>
+
+      {/* Auth Modals */}
+      <AuthModal
+        open={authModal === "sign-in"}
+        onOpenChange={(open) => setAuthModal(open ? "sign-in" : null)}
+        mode="sign-in"
+      />
+      <AuthModal
+        open={authModal === "sign-up"}
+        onOpenChange={(open) => setAuthModal(open ? "sign-up" : null)}
+        mode="sign-up"
+      />
     </div>
   );
 }
