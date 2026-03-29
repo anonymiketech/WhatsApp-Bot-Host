@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Link } from "wouter";
 import { Bot, Shield, Zap, ArrowRight, Server } from "lucide-react";
@@ -8,6 +8,15 @@ import { AuthModal } from "@/components/auth/auth-modal";
 export default function Landing() {
   const { isAuthenticated, isLoading } = useAuth();
   const [authModal, setAuthModal] = useState<"sign-in" | "sign-up" | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { mode } = (e as CustomEvent).detail ?? {};
+      if (mode === "sign-in" || mode === "sign-up") setAuthModal(mode);
+    };
+    window.addEventListener("open-auth-modal", handler);
+    return () => window.removeEventListener("open-auth-modal", handler);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background overflow-hidden relative">
