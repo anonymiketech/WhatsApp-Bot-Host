@@ -1,0 +1,18 @@
+packages:
+  "framer-motion": "For page transitions and interactive micro-animations on cards"
+  "date-fns": "For formatting bot creation and expiry dates"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for merging tailwind classes without style conflicts"
+
+images:
+  - path: "artifacts/anonymiketech/public/images/hero-bg.png"
+    description: "Abstract, dark, tech-forward background with subtle electric green and cyan glowing data lines or fiber optics, very professional and modern."
+    aspect_ratio: "16:9"
+  - path: "artifacts/anonymiketech/public/images/logo-icon.png"
+    description: "Minimalist, tech-forward icon representing a bot or server node, glowing electric cyan on a dark background."
+    aspect_ratio: "1:1"
+
+notes:
+  - Application uses Replit Auth for authentication via @workspace/replit-auth-web
+  - All API routes are accessed under /api with credentials: 'include'
+  - The Orval generated types are imported from @workspace/api-client-react
