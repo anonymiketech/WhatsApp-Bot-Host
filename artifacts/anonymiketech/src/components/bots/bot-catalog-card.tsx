@@ -1,4 +1,4 @@
-import { Zap, Coins } from "lucide-react";
+import { Zap, Coins, Github, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import type { BotDefinition } from "@/data/bots-catalog";
 
@@ -50,9 +50,7 @@ export function BotCatalogCard({ bot, index = 0, onDeploy, compact }: BotCatalog
           </div>
 
           {/* Coin badge */}
-          <div
-            className="flex flex-col items-end flex-shrink-0"
-          >
+          <div className="flex flex-col items-end flex-shrink-0">
             <div
               className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold"
               style={{ background: `${bot.accent}15`, color: bot.accent }}
@@ -85,25 +83,38 @@ export function BotCatalogCard({ bot, index = 0, onDeploy, compact }: BotCatalog
           )}
         </div>
 
-        {/* Deploy button */}
-        <button
-          onClick={() => onDeploy(bot)}
-          className="mt-auto w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border"
-          style={{
-            color: bot.accent,
-            borderColor: `${bot.accent}35`,
-            background: `${bot.accent}10`,
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = `${bot.accent}22`;
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = `${bot.accent}10`;
-          }}
-        >
-          <Zap className="w-3.5 h-3.5" />
-          Deploy Bot
-        </button>
+        {/* Action row */}
+        <div className="mt-auto flex items-center gap-2">
+          <button
+            onClick={() => onDeploy(bot)}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border"
+            style={{
+              color: bot.accent,
+              borderColor: `${bot.accent}35`,
+              background: `${bot.accent}10`,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${bot.accent}22`; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = `${bot.accent}10`; }}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Deploy Bot
+          </button>
+
+          {bot.githubRepo && (
+            <a
+              href={bot.githubRepo}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Star on GitHub"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl text-xs font-semibold border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex-shrink-0"
+              style={{ color: "#e2e8f0" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Github className="w-3.5 h-3.5" />
+              <Star className="w-3 h-3 text-yellow-400" />
+            </a>
+          )}
+        </div>
       </div>
     </motion.div>
   );

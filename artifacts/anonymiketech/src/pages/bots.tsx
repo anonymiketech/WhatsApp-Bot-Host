@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, Zap, Coins, Search, CheckCircle2 } from "lucide-react";
+import { Bot, Zap, Coins, Search, CheckCircle2, AlertTriangle, Github, Star } from "lucide-react";
 import { BOT_CATALOG, FEATURED_BOT, type BotDefinition } from "@/data/bots-catalog";
 import { BotCatalogCard } from "@/components/bots/bot-catalog-card";
 import { DeployBotModal } from "@/components/bots/deploy-bot-modal";
@@ -170,6 +170,59 @@ export default function BotsPage() {
             ))}
           </div>
         </div>
+
+        {/* Disclaimer banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="rounded-2xl border border-yellow-500/15 p-4 mb-6 flex gap-3"
+          style={{ background: "rgba(234,179,8,0.04)" }}
+        >
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#ca8a04" }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold mb-0.5" style={{ color: "#ca8a04" }}>Third-Party Bot Notice</p>
+            <p className="text-xs leading-relaxed" style={{ color: "#a16207" }}>
+              Bots listed on this marketplace (except the official TRUTH bot) are developed and maintained by independent developers.
+              Any downtime, pairing issues, or bugs with a bot's pairing site or functionality are solely the responsibility of that bot's developer — not ANONYMIKETECH.
+              If you encounter issues, please be patient and wait for the developer to resolve them.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* GitHub shoutout */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="rounded-2xl border border-white/8 p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3"
+          style={{ background: "rgba(255,255,255,0.02)" }}
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10" style={{ background: "rgba(255,255,255,0.05)" }}>
+              <Github className="w-4 h-4" style={{ color: "#94a3b8" }} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold leading-tight">Support the developers ⭐</p>
+              <p className="text-xs mt-0.5" style={{ color: "#71717a" }}>Each bot is an open-source project. Show some love by starring &amp; forking the repos on GitHub.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {BOT_CATALOG.filter((b) => b.githubRepo).map((b) => (
+              <a
+                key={b.id}
+                href={b.githubRepo}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all"
+                style={{ color: "#cbd5e1" }}
+              >
+                <Star className="w-3 h-3 text-yellow-400 flex-shrink-0" />
+                {b.name}
+              </a>
+            ))}
+          </div>
+        </motion.div>
 
         {/* Bot Grid */}
         {filtered.length === 0 ? (

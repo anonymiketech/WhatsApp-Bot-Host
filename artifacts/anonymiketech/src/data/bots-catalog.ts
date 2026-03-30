@@ -15,6 +15,7 @@ export interface BotDefinition {
   features: string[];
   sessionLink: string;
   docsUrl: string;
+  githubRepo?: string;
   category: "official" | "ai" | "group" | "media" | "advanced";
 }
 
@@ -62,6 +63,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://peace-hub-mcbo.onrender.com/pair",
     docsUrl: "https://docs.anonymiketech.online/king-md",
+    githubRepo: "https://github.com/KING-BOT-OFFICIAL/KING-BOT-MD-V1",
     category: "ai",
   },
   {
@@ -83,6 +85,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://pair5.cypherxbot.space/",
     docsUrl: "https://docs.anonymiketech.online/cypher-x",
+    githubRepo: "https://github.com/Dark-Xploit/CypherX",
     category: "advanced",
   },
   {
@@ -104,6 +107,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://pair.bwmxmd.co.ke/",
     docsUrl: "https://docs.anonymiketech.online/bwm-xmd-go",
+    githubRepo: "https://github.com/Bwmxmd254/BWM-XMD-GO",
     category: "advanced",
   },
   {
@@ -126,6 +130,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://session.giftedtech.co.ke/",
     docsUrl: "https://docs.anonymiketech.online/atassa-cloud",
+    githubRepo: "https://github.com/mauricegift/atassa",
     category: "advanced",
   },
   {
@@ -147,6 +152,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://davexultra.zone.id/",
     docsUrl: "https://docs.anonymiketech.online/dave-x",
+    githubRepo: "https://github.com/DaveTech-Incr/DAVE-X",
     category: "ai",
   },
   {
@@ -168,6 +174,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://7-w.vercel.app/wolf.html",
     docsUrl: "https://docs.anonymiketech.online/wolf-bot",
+    githubRepo: "https://github.com/sil3nt-wolf/silentwolf",
     category: "group",
   },
   {
@@ -189,6 +196,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://www.keithsite.top/keithpair",
     docsUrl: "https://docs.anonymiketech.online/keith-md",
+    githubRepo: "https://github.com/kkeizza/Keith",
     category: "media",
   },
   {
@@ -211,6 +219,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     ],
     sessionLink: "https://truth-md.courtneytech.xyz/",
     docsUrl: "https://docs.anonymiketech.online/truth-md",
+    githubRepo: "https://github.com/Courtney250/TRUTH-MD",
     category: "ai",
   },
 ];

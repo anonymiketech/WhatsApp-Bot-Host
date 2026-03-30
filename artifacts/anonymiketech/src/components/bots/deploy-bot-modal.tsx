@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Copy, Check, Loader2, Zap, BookOpen } from "lucide-react";
+import { ExternalLink, Copy, Check, Loader2, Zap, BookOpen, Github, Star, GitFork, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { BotDefinition } from "@/data/bots-catalog";
 
@@ -75,7 +75,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border border-white/10 bg-background shadow-2xl">
+      <DialogContent className="sm:max-w-[490px] p-0 overflow-hidden border border-white/10 bg-background shadow-2xl">
         <DialogTitle className="sr-only">Deploy {bot.name}</DialogTitle>
 
         {/* Top accent bar */}
@@ -135,7 +135,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
               <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{bot.description}</p>
 
               {/* Features */}
-              <div className="flex flex-wrap gap-2 mb-6">
+              <div className="flex flex-wrap gap-2 mb-5">
                 {bot.features.map((f) => (
                   <span
                     key={f}
@@ -148,7 +148,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
               </div>
 
               {/* Cost */}
-              <div className="rounded-xl bg-secondary/40 border border-white/5 mb-6 overflow-hidden">
+              <div className="rounded-xl bg-secondary/40 border border-white/5 mb-5 overflow-hidden">
                 <div className="flex items-center justify-between p-3.5">
                   <span className="text-sm text-muted-foreground">Monthly subscription</span>
                   <div className="flex items-center gap-1.5">
@@ -160,6 +160,54 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                   <span>Renews every 30 days from your deploy date</span>
                   <span>{bot.coinsPerDay} coins/day</span>
                 </div>
+              </div>
+
+              {/* GitHub support section */}
+              {bot.githubRepo && (
+                <div
+                  className="rounded-xl border border-white/8 p-3.5 mb-5 flex items-center gap-3"
+                  style={{ background: "rgba(255,255,255,0.02)" }}
+                >
+                  <Github className="w-4 h-4 flex-shrink-0" style={{ color: "#94a3b8" }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold leading-tight">Love this bot? Support the developer</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: "#71717a" }}>Star & fork the repo to show appreciation</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <a
+                      href={bot.githubRepo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                      style={{ color: "#e2e8f0" }}
+                    >
+                      <Star className="w-3 h-3 text-yellow-400" />
+                      Star
+                    </a>
+                    <a
+                      href={`${bot.githubRepo}/fork`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                      style={{ color: "#94a3b8" }}
+                    >
+                      <GitFork className="w-3 h-3" />
+                      Fork
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Disclaimer */}
+              <div
+                className="rounded-xl border border-yellow-500/15 p-3 mb-5 flex gap-2.5"
+                style={{ background: "rgba(234,179,8,0.04)" }}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#ca8a04" }} />
+                <p className="text-[11px] leading-relaxed" style={{ color: "#a16207" }}>
+                  <span className="font-semibold" style={{ color: "#ca8a04" }}>Note:</span>{" "}
+                  Any downtime or issues with the bot's pairing site or functionality are the responsibility of the bot's developer, not ANONYMIKETECH. Please wait patiently while the developer resolves any issues.
+                </p>
               </div>
 
               {/* Action buttons */}
@@ -225,6 +273,11 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 </div>
+                {/* Pairing site disclaimer */}
+                <p className="text-[10px] mt-1.5 flex items-start gap-1" style={{ color: "#71717a" }}>
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "#ca8a04" }} />
+                  If this link is down, it's a temporary issue on the developer's end. Please try again later.
+                </p>
               </div>
 
               {/* Step 2: Bot name */}
