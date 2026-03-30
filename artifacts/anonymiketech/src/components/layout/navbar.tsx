@@ -1,26 +1,17 @@
 import { Link } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useGetMe, useAddCoins } from "@/hooks/use-users";
-import { Coins, LogOut, Loader2, Bot as BotIcon, Zap, Menu, X, Store } from "lucide-react";
+import { useGetMe } from "@/hooks/use-users";
+import { Coins, LogOut, Bot as BotIcon, Plus, Menu, X, Store } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { BuyCoinsModal } from "@/components/coins/buy-coins-modal";
 
 export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
   const { data: profile, isLoading: isProfileLoading } = useGetMe();
-  const { mutate: addCoins, isPending: isAddingCoins } = useAddCoins();
-  const [showAddSuccess, setShowAddSuccess] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const handleAddCoins = () => {
-    addCoins({ amount: 100 }, {
-      onSuccess: () => {
-        setShowAddSuccess(true);
-        setTimeout(() => setShowAddSuccess(false), 2000);
-      }
-    });
-  };
+  const [buyCoinsOpen, setBuyCoinsOpen] = useState(false);
 
   return (
     <>
@@ -59,20 +50,16 @@ export function Navbar() {
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-4">
 
-            {/* Coins Display (authenticated) */}
+            {/* Coins Display + Buy (authenticated) */}
             {isAuthenticated && (
-              <div className="flex items-center bg-secondary/50 rounded-full p-1 pr-3 sm:pr-4 border border-white/5">
-                <button
-                  onClick={handleAddCoins}
-                  disabled={isAddingCoins}
-                  className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-primary to-accent text-background hover:opacity-90 transition-opacity disabled:opacity-50 relative flex-shrink-0"
-                  title="Add 100 Coins (Test)"
-                >
-                  {isAddingCoins ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                  {showAddSuccess && (
-                    <span className="absolute -top-7 text-primary text-xs font-bold whitespace-nowrap">+100</span>
-                  )}
-                </button>
+              <button
+                onClick={() => setBuyCoinsOpen(true)}
+                className="flex items-center bg-secondary/50 rounded-full p-1 pr-3 sm:pr-4 border border-white/5 hover:border-primary/30 hover:bg-secondary/80 transition-all group"
+                title="Buy Coins"
+              >
+                <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-primary to-accent text-background group-hover:opacity-90 transition-opacity flex-shrink-0">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
                 <div className="flex items-center gap-1.5 ml-2 sm:ml-3">
                   <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                   <span className={cn(
@@ -82,7 +69,7 @@ export function Navbar() {
                     {profile?.coins ?? 0}
                   </span>
                 </div>
-              </div>
+              </button>
             )}
 
             {/* Avatar + logout (desktop, authenticated) */}
@@ -149,6 +136,14 @@ export function Navbar() {
                       Dashboard
                     </Link>
 
+                    <button
+                      onClick={() => { setBuyCoinsOpen(true); setMobileMenuOpen(false); }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-primary hover:bg-primary/10 transition-colors w-full text-left"
+                    >
+                      <Coins className="w-4 h-4" />
+                      Buy Coins
+                    </button>
+
                     <div className="px-4 py-3 flex items-center gap-3 border-t border-white/5 mt-1">
                       {user?.profileImageUrl ? (
                         <img src={user.profileImageUrl} alt="Profile" className="w-9 h-9 rounded-full border-2 border-primary/20" />
@@ -176,6 +171,8 @@ export function Navbar() {
           )}
         </AnimatePresence>
       </nav>
+
+      <BuyCoinsModal open={buyCoinsOpen} onClose={() => setBuyCoinsOpen(false)} />
     </>
   );
 }
