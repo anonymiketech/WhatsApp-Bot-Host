@@ -34,6 +34,13 @@ export function Navbar() {
           </span>
         </Link>
 
+        {/* Nav Links */}
+        <div className="hidden md:flex items-center gap-1">
+          <Link href="/bots" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-white/5 transition-colors font-medium">
+            Marketplace
+          </Link>
+        </div>
+
         {/* User Actions */}
         {isAuthenticated && (
           <div className="flex items-center gap-4 sm:gap-6">
