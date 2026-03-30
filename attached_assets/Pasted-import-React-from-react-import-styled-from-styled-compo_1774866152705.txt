@@ -1,0 +1,165 @@
+import React from 'react';
+import styled from 'styled-components';
+
+const Loader = () => {
+  return (
+    <StyledWrapper>
+      <section style={{top: 0, left: 0}} className="container-espiral">
+        <aside style={{-r: 1}} className="loader">
+          <span style={{-i: 1}} className="circulo" />
+          <span style={{-i: 2}} className="circulo" />
+          <span style={{-i: 3}} className="circulo" />
+          <span style={{-i: 4}} className="circulo" />
+          <span style={{-i: 5}} className="circulo" />
+          <span style={{-i: 6}} className="circulo" />
+          <span style={{-i: 7}} className="circulo" />
+          <span style={{-i: 8}} className="circulo" />
+          <span style={{-i: 9}} className="circulo" />
+          <span style={{-i: 10}} className="circulo" />
+          <span style={{-i: 11}} className="circulo" />
+          <span style={{-i: 12}} className="circulo" />
+          <span style={{-i: 13}} className="circulo" />
+          <span style={{-i: 14}} className="circulo" />
+          <span style={{-i: 15}} className="circulo" />
+          <span style={{-i: 16}} className="circulo" />
+          <span style={{-i: 17}} className="circulo" />
+          <span style={{-i: 18}} className="circulo" />
+          <span style={{-i: 19}} className="circulo" />
+          <span style={{-i: 20}} className="circulo" />
+        </aside>
+        <aside style={{-r: 2}} className="loader">
+          <span style={{-i: 1}} className="circulo" />
+          <span style={{-i: 2}} className="circulo" />
+          <span style={{-i: 3}} className="circulo" />
+          <span style={{-i: 4}} className="circulo" />
+          <span style={{-i: 5}} className="circulo" />
+          <span style={{-i: 6}} className="circulo" />
+          <span style={{-i: 7}} className="circulo" />
+          <span style={{-i: 8}} className="circulo" />
+          <span style={{-i: 9}} className="circulo" />
+          <span style={{-i: 10}} className="circulo" />
+          <span style={{-i: 11}} className="circulo" />
+          <span style={{-i: 12}} className="circulo" />
+          <span style={{-i: 13}} className="circulo" />
+          <span style={{-i: 14}} className="circulo" />
+          <span style={{-i: 15}} className="circulo" />
+          <span style={{-i: 16}} className="circulo" />
+          <span style={{-i: 17}} className="circulo" />
+          <span style={{-i: 18}} className="circulo" />
+          <span style={{-i: 19}} className="circulo" />
+          <span style={{-i: 20}} className="circulo" />
+        </aside>
+        <aside style={{-r: 3}} className="loader">
+          <span style={{-i: 1}} className="circulo" />
+          <span style={{-i: 2}} className="circulo" />
+          <span style={{-i: 3}} className="circulo" />
+          <span style={{-i: 4}} className="circulo" />
+          <span style={{-i: 5}} className="circulo" />
+          <span style={{-i: 6}} className="circulo" />
+          <span style={{-i: 7}} className="circulo" />
+          <span style={{-i: 8}} className="circulo" />
+          <span style={{-i: 9}} className="circulo" />
+          <span style={{-i: 10}} className="circulo" />
+          <span style={{-i: 11}} className="circulo" />
+          <span style={{-i: 12}} className="circulo" />
+          <span style={{-i: 13}} className="circulo" />
+          <span style={{-i: 14}} className="circulo" />
+          <span style={{-i: 15}} className="circulo" />
+          <span style={{-i: 16}} className="circulo" />
+          <span style={{-i: 17}} className="circulo" />
+          <span style={{-i: 18}} className="circulo" />
+          <span style={{-i: 19}} className="circulo" />
+          <span style={{-i: 20}} className="circulo" />
+        </aside>
+        <aside style={{-r: 4}} className="loader">
+          <span style={{-i: 1}} className="circulo" />
+          <span style={{-i: 2}} className="circulo" />
+          <span style={{-i: 3}} className="circulo" />
+          <span style={{-i: 4}} className="circulo" />
+          <span style={{-i: 5}} className="circulo" />
+          <span style={{-i: 6}} className="circulo" />
+          <span style={{-i: 7}} className="circulo" />
+          <span style={{-i: 8}} className="circulo" />
+          <span style={{-i: 9}} className="circulo" />
+          <span style={{-i: 10}} className="circulo" />
+          <span style={{-i: 11}} className="circulo" />
+          <span style={{-i: 12}} className="circulo" />
+          <span style={{-i: 13}} className="circulo" />
+          <span style={{-i: 14}} className="circulo" />
+          <span style={{-i: 15}} className="circulo" />
+          <span style={{-i: 16}} className="circulo" />
+          <span style={{-i: 17}} className="circulo" />
+          <span style={{-i: 18}} className="circulo" />
+          <span style={{-i: 19}} className="circulo" />
+          <span style={{-i: 20}} className="circulo" />
+        </aside>
+      </section>
+    </StyledWrapper>
+  );
+}
+
+const StyledWrapper = styled.div`
+  .container-espiral {
+    position: absolute;
+    top: 0;
+    left: 0;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    place-content: center;
+
+    .loader {
+      position: relative;
+      transform: rotate(calc(var(--r) * 45deg));
+
+      .circulo {
+        --color: #0f0;
+        top: 0;
+        width: 200px;
+        height: 2px;
+        left: -200px;
+        position: absolute;
+        transform-origin: right;
+        transform: rotate(calc(var(--i) * 18deg));
+
+        &::before {
+          content: "";
+          position: absolute;
+          top: -50%;
+          width: 15px;
+          height: 15px;
+          background-color: var(--color);
+          border-radius: 50%;
+          box-shadow:
+            0 0 10px var(--color),
+            0 0 20px var(--color),
+            0 0 40px var(--color),
+            0 0 60px var(--color),
+            0 0 80px var(--color),
+            0 0 100px var(--color);
+          animation: animate 5s linear infinite;
+          animation-delay: calc(var(--i) * -0.5s);
+        }
+      }
+    }
+  }
+
+  @keyframes animate {
+    0% {
+      transform: translateX(200px) scale(1);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(0px) scale(0);
+      opacity: 1;
+    }
+  }`;
+
+export default Loader;

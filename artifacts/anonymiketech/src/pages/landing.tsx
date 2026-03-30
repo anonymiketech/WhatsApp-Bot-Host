@@ -5,6 +5,7 @@ import { Bot, Shield, Zap, ArrowRight, Server, Coins } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthModal } from "@/components/auth/auth-modal";
 import { DeployBotModal } from "@/components/bots/deploy-bot-modal";
+import { Footer } from "@/components/layout/footer";
 import { FEATURED_BOT, OTHER_BOTS, type BotDefinition } from "@/data/bots-catalog";
 
 export default function Landing() {
@@ -304,6 +305,7 @@ export default function Landing() {
         open={deployOpen}
         onOpenChange={setDeployOpen}
       />
+      <Footer />
     </div>
   );
 }

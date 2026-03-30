@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { PairingGuide } from "@/components/bots/pairing-guide";
 import { SaveBotForm } from "@/components/bots/save-bot-form";
 import { BotCard } from "@/components/bots/bot-card";
+import { SectionLoader } from "@/components/ui/section-loader";
 import { useGetMyBots } from "@/hooks/use-bots";
-import { Loader2, Bot as BotIcon } from "lucide-react";
+import { Bot as BotIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
@@ -24,7 +26,7 @@ export default function Dashboard() {
   if (isAuthLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <SectionLoader label="Loading your dashboard…" size="lg" />
       </div>
     );
   }
@@ -83,9 +85,8 @@ export default function Dashboard() {
             </motion.div>
 
             {isBotsLoading ? (
-              <div className="glass-panel rounded-2xl p-12 flex flex-col items-center justify-center text-muted-foreground">
-                <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
-                <p>Loading instances...</p>
+              <div className="glass-panel rounded-2xl flex items-center justify-center">
+                <SectionLoader label="Loading instances…" size="md" />
               </div>
             ) : bots.length === 0 ? (
               <motion.div 
@@ -120,6 +121,7 @@ export default function Dashboard() {
           
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
