@@ -2,12 +2,14 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { notificationsTable } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { ensureWelcomeNotification } from "../lib/notify";
 
 const router = Router();
 
 router.get("/api/notifications", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   const userId = req.user!.id;
+  await ensureWelcomeNotification(userId);
   const rows = await db
     .select()
     .from(notificationsTable)
