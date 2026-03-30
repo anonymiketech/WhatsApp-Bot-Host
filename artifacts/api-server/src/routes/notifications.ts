@@ -18,6 +18,23 @@ router.get("/api/notifications", async (req, res) => {
   return res.json({ notifications: rows, unreadCount });
 });
 
+router.post("/api/notifications/read-all", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+  const userId = req.user!.id;
+  await db
+    .update(notificationsTable)
+    .set({ read: true })
+    .where(eq(notificationsTable.userId, userId));
+  return res.json({ success: true });
+});
+
+router.delete("/api/notifications/delete-all", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+  const userId = req.user!.id;
+  await db.delete(notificationsTable).where(eq(notificationsTable.userId, userId));
+  return res.json({ success: true });
+});
+
 router.post("/api/notifications/:id/read", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   const userId = req.user!.id;
@@ -28,13 +45,12 @@ router.post("/api/notifications/:id/read", async (req, res) => {
   return res.json({ success: true });
 });
 
-router.post("/api/notifications/read-all", async (req, res) => {
+router.delete("/api/notifications/:id", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   const userId = req.user!.id;
   await db
-    .update(notificationsTable)
-    .set({ read: true })
-    .where(eq(notificationsTable.userId, userId));
+    .delete(notificationsTable)
+    .where(and(eq(notificationsTable.id, req.params.id), eq(notificationsTable.userId, userId)));
   return res.json({ success: true });
 });
 

@@ -1,7 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, CheckCheck, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone, ExternalLink, X } from "lucide-react";
+import { Bell, CheckCheck, Info, CheckCircle2, AlertTriangle, XCircle, Megaphone, ExternalLink, X, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNotifications, useMarkRead, useMarkAllRead, type AppNotification } from "@/hooks/use-notifications";
+import {
+  useNotifications,
+  useMarkRead,
+  useMarkAllRead,
+  useDeleteNotification,
+  useDeleteAllNotifications,
+  type AppNotification,
+} from "@/hooks/use-notifications";
 import { Link } from "wouter";
 
 function timeAgo(dateStr: string) {
@@ -28,6 +35,8 @@ export function NotificationsBell() {
   const { data, isLoading } = useNotifications();
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
+  const deleteOne = useDeleteNotification();
+  const deleteAll = useDeleteAllNotifications();
 
   const notifications = data?.notifications ?? [];
   const unreadCount = data?.unreadCount ?? 0;
@@ -96,6 +105,17 @@ export function NotificationsBell() {
                     <span className="hidden sm:inline">All read</span>
                   </button>
                 )}
+                {notifications.length > 0 && (
+                  <button
+                    onClick={() => deleteAll.mutate()}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
+                    style={{ color: "#71717a" }}
+                    title="Clear all notifications"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </button>
+                )}
                 <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-white/8 transition-colors" style={{ color: "#71717a" }}>
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -111,20 +131,18 @@ export function NotificationsBell() {
               ) : notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-2 text-center px-4">
                   <Bell className="w-8 h-8 opacity-20" />
-                  <p className="text-sm font-medium">No notifications yet</p>
+                  <p className="text-sm font-medium">No notifications</p>
                   <p className="text-xs" style={{ color: "#71717a" }}>
-                    You'll be notified when you deploy bots, make payments, or account changes happen.
+                    You'll be notified when bots are deployed, payments complete, or account changes happen.
                   </p>
                 </div>
               ) : (
                 <div>
                   {notifications.map((n) => {
                     const { Icon, color, bg } = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.info;
-                    const content = (
+                    const inner = (
                       <div
-                        key={n.id}
-                        onClick={() => handleNotifClick(n)}
-                        className="flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-white/4 border-b border-white/5 last:border-0"
+                        className="flex gap-3 px-4 py-3 group/item transition-colors hover:bg-white/4 border-b border-white/5 last:border-0"
                         style={!n.read ? { background: "rgba(255,255,255,0.02)" } : {}}
                       >
                         <div
@@ -133,7 +151,10 @@ export function NotificationsBell() {
                         >
                           <Icon className="w-4 h-4" style={{ color }} />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onClick={() => handleNotifClick(n)}
+                        >
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-sm font-semibold leading-tight">{n.title}</p>
                             {!n.read && (
@@ -150,13 +171,22 @@ export function NotificationsBell() {
                             )}
                           </div>
                         </div>
+                        {/* Dismiss button */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteOne.mutate(n.id); }}
+                          className="opacity-0 group-hover/item:opacity-100 flex-shrink-0 p-1 rounded-lg hover:bg-red-500/15 transition-all self-start mt-0.5"
+                          style={{ color: "#71717a" }}
+                          title="Dismiss"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     );
 
                     return n.link ? (
-                      <Link key={n.id} href={n.link}>{content}</Link>
+                      <Link key={n.id} href={n.link}>{inner}</Link>
                     ) : (
-                      <div key={n.id}>{content}</div>
+                      <div key={n.id}>{inner}</div>
                     );
                   })}
                 </div>

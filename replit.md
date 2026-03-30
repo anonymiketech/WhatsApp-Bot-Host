@@ -2,7 +2,15 @@
 
 ## Overview
 
-**ANONYMIKETECH** — WhatsApp Bot Hosting Platform. Users log in with Replit Auth, pair their WhatsApp externally, save their session ID, and start/stop bots. Coin-based system (50 coins per 24h of bot runtime). New users receive 100 coins.
+**ANONYMIKETECH** — WhatsApp Bot Hosting Platform. Users log in (Email/Password, GitHub, Google, Replit), pair their WhatsApp, save their session ID, and deploy bots. Coin-based system — 30 coins/day most bots, 50 coins/day Atassa Cloud. New users receive 100 free coins + welcome notification.
+
+**Pages**: `/` (Landing), `/bots` (Marketplace), `/pricing` (Pricing), `/dashboard`, `/profile`, `/partners`
+
+**Notifications**: Bell visible on both desktop and mobile (top navbar). Users can mark read, mark all read, dismiss individual, or clear all. API endpoints: GET, POST (read), DELETE (single/all). Welcome notification sent on email/GitHub/Google signup.
+
+**Pricing page** (`/pricing`): Free tier banner, 4 coin packages (Starter 100c/KES50, Popular 300c/KES100, Value 700c/KES200, Mega 2000c/KES500), bot costs table, how-it-works, features list, FAQ accordion.
+
+**Bot catalog** (`bots-catalog.ts`): 9 bots, all with real `sessionLink` (pairing site), `githubRepo`, and `docsUrl` (now pointing to GitHub repos).
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 

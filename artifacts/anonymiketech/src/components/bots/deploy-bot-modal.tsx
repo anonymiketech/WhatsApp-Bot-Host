@@ -75,12 +75,13 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[490px] p-0 overflow-hidden border border-white/10 bg-background shadow-2xl">
+      <DialogContent className="sm:max-w-[490px] p-0 overflow-hidden border border-white/10 bg-background shadow-2xl max-h-[92vh] flex flex-col">
         <DialogTitle className="sr-only">Deploy {bot.name}</DialogTitle>
 
         {/* Top accent bar */}
         <div className="h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${bot.accent}80, ${bot.accent}, ${bot.accent}80)` }} />
 
+        <div className="overflow-y-auto flex-1">
         <AnimatePresence mode="wait">
           {deployed ? (
             <motion.div
@@ -326,6 +327,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </DialogContent>
     </Dialog>
   );

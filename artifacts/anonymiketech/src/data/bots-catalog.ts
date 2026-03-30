@@ -1,7 +1,3 @@
-export interface BotFeature {
-  label: string;
-}
-
 export interface BotDefinition {
   id: string;
   name: string;
@@ -62,7 +58,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Admin controls",
     ],
     sessionLink: "https://peace-hub-mcbo.onrender.com/pair",
-    docsUrl: "https://docs.anonymiketech.online/king-md",
+    docsUrl: "https://github.com/KING-BOT-OFFICIAL/KING-BOT-MD-V1",
     githubRepo: "https://github.com/KING-BOT-OFFICIAL/KING-BOT-MD-V1",
     category: "ai",
   },
@@ -84,7 +80,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Multi-owner support",
     ],
     sessionLink: "https://pair5.cypherxbot.space/",
-    docsUrl: "https://docs.anonymiketech.online/cypher-x",
+    docsUrl: "https://github.com/Dark-Xploit/CypherX",
     githubRepo: "https://github.com/Dark-Xploit/CypherX",
     category: "advanced",
   },
@@ -106,7 +102,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Fast boot time",
     ],
     sessionLink: "https://pair.bwmxmd.co.ke/",
-    docsUrl: "https://docs.anonymiketech.online/bwm-xmd-go",
+    docsUrl: "https://github.com/Bwmxmd254/BWM-XMD-GO",
     githubRepo: "https://github.com/Bwmxmd254/BWM-XMD-GO",
     category: "advanced",
   },
@@ -129,7 +125,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Always-on uptime",
     ],
     sessionLink: "https://session.giftedtech.co.ke/",
-    docsUrl: "https://docs.anonymiketech.online/atassa-cloud",
+    docsUrl: "https://github.com/mauricegift/atassa",
     githubRepo: "https://github.com/mauricegift/atassa",
     category: "advanced",
   },
@@ -151,7 +147,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Baileys multi-device",
     ],
     sessionLink: "https://davexultra.zone.id/",
-    docsUrl: "https://docs.anonymiketech.online/dave-x",
+    docsUrl: "https://github.com/DaveTech-Incr/DAVE-X",
     githubRepo: "https://github.com/DaveTech-Incr/DAVE-X",
     category: "ai",
   },
@@ -173,7 +169,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Baileys v7 multi-device",
     ],
     sessionLink: "https://7-w.vercel.app/wolf.html",
-    docsUrl: "https://docs.anonymiketech.online/wolf-bot",
+    docsUrl: "https://github.com/sil3nt-wolf/silentwolf",
     githubRepo: "https://github.com/sil3nt-wolf/silentwolf",
     category: "group",
   },
@@ -195,7 +191,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Baileys multi-device",
     ],
     sessionLink: "https://www.keithsite.top/keithpair",
-    docsUrl: "https://docs.anonymiketech.online/keith-md",
+    docsUrl: "https://github.com/kkeizza/Keith",
     githubRepo: "https://github.com/kkeizza/Keith",
     category: "media",
   },
@@ -218,7 +214,7 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Baileys multi-device",
     ],
     sessionLink: "https://truth-md.courtneytech.xyz/",
-    docsUrl: "https://docs.anonymiketech.online/truth-md",
+    docsUrl: "https://github.com/Courtney250/TRUTH-MD",
     githubRepo: "https://github.com/Courtney250/TRUTH-MD",
     category: "ai",
   },

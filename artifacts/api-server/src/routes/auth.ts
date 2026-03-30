@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
+import { createNotification } from "../lib/notify";
 import {
   clearSession,
   getOidcConfig,
@@ -259,6 +260,13 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
     })
     .returning();
 
+  await createNotification(
+    user.id,
+    "success",
+    "Welcome to ANONYMIKETECH! 🎉",
+    "Your account is ready. You've received 100 free coins — deploy your first WhatsApp bot and go live in seconds!",
+    "/bots"
+  );
   const sid = await buildSession(user);
   setSessionCookie(res, sid);
   res.json({ success: true });
@@ -389,6 +397,13 @@ router.get("/auth/github/callback", async (req: Request, res: Response) => {
         .insert(usersTable)
         .values({ githubId, email: primaryEmail, firstName, lastName, profileImageUrl: profile.avatar_url ?? null, coins: 100 })
         .returning();
+      await createNotification(
+        user.id,
+        "success",
+        "Welcome to ANONYMIKETECH! 🎉",
+        "Your GitHub account is connected. You've received 100 free coins — deploy your first WhatsApp bot and go live in seconds!",
+        "/bots"
+      );
     }
 
     const sid = await buildSession(user);
@@ -515,6 +530,13 @@ router.get("/auth/google/callback", async (req: Request, res: Response) => {
         .insert(usersTable)
         .values({ googleId, email, firstName, lastName, profileImageUrl, coins: 100 })
         .returning();
+      await createNotification(
+        user.id,
+        "success",
+        "Welcome to ANONYMIKETECH! 🎉",
+        "Your Google account is connected. You've received 100 free coins — deploy your first WhatsApp bot and go live in seconds!",
+        "/bots"
+      );
     }
 
     const sid = await buildSession(user);
