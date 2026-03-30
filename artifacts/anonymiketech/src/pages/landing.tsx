@@ -44,33 +44,39 @@ export default function Landing() {
 
       <div className="relative z-10">
         {/* Navigation */}
-        <nav className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
-              <Bot className="w-5 h-5 text-primary" />
+        <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
+              <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <span className="font-display font-bold text-xl tracking-widest text-foreground">
-              ANONYMIKETECH
+            <span className="font-display font-bold tracking-widest text-foreground">
+              <span className="text-base sm:hidden">AMT</span>
+              <span className="hidden sm:inline text-xl">ANONYMIKETECH</span>
             </span>
           </div>
+
+          {/* Center: Marketplace link (desktop) */}
+          <Link href="/bots" className="hidden md:flex text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+            Marketplace
+          </Link>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {!isLoading && (
               isAuthenticated ? (
-                <Link href="/dashboard" className="px-6 py-2.5 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.3)] rounded-lg text-sm font-bold transition-all">
+                <Link href="/dashboard" className="px-4 sm:px-6 py-2 sm:py-2.5 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.3)] rounded-lg text-sm font-bold transition-all whitespace-nowrap">
                   Dashboard
                 </Link>
               ) : (
                 <>
-                  <button 
+                  <button
                     onClick={() => setAuthModal("sign-in")}
-                    className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold transition-colors"
+                    className="hidden sm:block px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
                   >
                     Sign In
                   </button>
-                  <button 
+                  <button
                     onClick={() => setAuthModal("sign-up")}
-                    className="px-5 py-2.5 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.3)] rounded-lg text-sm font-bold transition-all"
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.3)] rounded-lg text-sm font-bold transition-all whitespace-nowrap"
                   >
                     Sign Up
                   </button>
@@ -81,7 +87,7 @@ export default function Landing() {
         </nav>
 
         {/* Hero Section */}
-        <main className="max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center text-center">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-20 pb-16 sm:pb-32 flex flex-col items-center text-center">
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -167,7 +173,7 @@ export default function Landing() {
         </main>
 
         {/* ── Bot Showcase ── */}
-        <section className="max-w-7xl mx-auto px-6 pb-32">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-32">
           <motion.div
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
