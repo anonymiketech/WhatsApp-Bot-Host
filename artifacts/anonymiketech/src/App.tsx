@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { IntroLoader } from "@/components/ui/intro-loader";
 import { MaintenanceGate } from "@/components/maintenance-gate";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BotsPage from "@/pages/bots";
@@ -30,13 +31,27 @@ function Router() {
       <ScrollToTop />
       <MaintenanceGate>
         <Switch>
+          {/* Public routes */}
           <Route path="/" component={Landing} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/bots" component={BotsPage} />
-          <Route path="/partners" component={PartnersPage} />
-          <Route path="/profile" component={ProfilePage} />
           <Route path="/pricing" component={PricingPage} />
+
+          {/* Protected routes — require login */}
+          <Route path="/dashboard">
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          </Route>
+          <Route path="/bots">
+            <ProtectedRoute><BotsPage /></ProtectedRoute>
+          </Route>
+          <Route path="/partners">
+            <ProtectedRoute><PartnersPage /></ProtectedRoute>
+          </Route>
+          <Route path="/profile">
+            <ProtectedRoute><ProfilePage /></ProtectedRoute>
+          </Route>
+
+          {/* Admin — protected separately on the admin page itself */}
           <Route path="/1admin1" component={AdminPage} />
+
           <Route component={NotFound} />
         </Switch>
       </MaintenanceGate>

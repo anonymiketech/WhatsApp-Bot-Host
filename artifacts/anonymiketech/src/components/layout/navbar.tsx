@@ -62,8 +62,9 @@ export function Navbar() {
 
           {/* Center nav (desktop) */}
           <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-            {navLink("/bots", "Marketplace")}
             {navLink("/pricing", "Pricing")}
+            {isAuthenticated && navLink("/bots", "Marketplace")}
+            {isAuthenticated && navLink("/partners", "Partners")}
             {isAuthenticated && navLink("/dashboard", "Dashboard")}
           </div>
 
@@ -139,15 +140,6 @@ export function Navbar() {
             >
               <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1">
                 <Link
-                  href="/bots"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-                >
-                  <Store className="w-4 h-4" />
-                  Marketplace
-                </Link>
-
-                <Link
                   href="/pricing"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
@@ -158,6 +150,15 @@ export function Navbar() {
 
                 {isAuthenticated && (
                   <>
+                    <Link
+                      href="/bots"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                    >
+                      <Store className="w-4 h-4" />
+                      Marketplace
+                    </Link>
+
                     <Link
                       href="/dashboard"
                       onClick={() => setMobileMenuOpen(false)}

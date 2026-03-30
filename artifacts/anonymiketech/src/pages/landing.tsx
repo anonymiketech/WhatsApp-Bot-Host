@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Bot, Shield, Zap, ArrowRight, Server, Coins, Star, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { AuthModal } from "@/components/auth/auth-modal";
@@ -17,6 +17,7 @@ const COIN_PACKAGES = [
 
 export default function Landing() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
   const [authModal, setAuthModal] = useState<"sign-in" | "sign-up" | null>(null);
   const [selectedBot, setSelectedBot] = useState<BotDefinition | null>(null);
   const [deployOpen, setDeployOpen] = useState(false);
@@ -35,6 +36,12 @@ export default function Landing() {
     window.addEventListener("open-auth-modal", handler);
     return () => window.removeEventListener("open-auth-modal", handler);
   }, []);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   return (
     <div className="min-h-screen bg-background relative flex flex-col">
@@ -66,8 +73,10 @@ export default function Landing() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <Link href="/bots" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Marketplace</Link>
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Pricing</Link>
+            {isAuthenticated && (
+              <Link href="/bots" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">Marketplace</Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
