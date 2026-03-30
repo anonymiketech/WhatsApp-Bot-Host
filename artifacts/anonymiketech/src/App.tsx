@@ -6,6 +6,7 @@ import { IntroLoader } from "@/components/ui/intro-loader";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BotsPage from "@/pages/bots";
+import PartnersPage from "@/pages/partners";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/bots" component={BotsPage} />
+      <Route path="/partners" component={PartnersPage} />
       <Route component={NotFound} />
     </Switch>
   );
