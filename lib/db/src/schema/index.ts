@@ -3,3 +3,4 @@ export * from "./bots";
 export * from "./payments";
 export * from "./partners";
 export * from "./notifications";
+export * from "./settings";

@@ -4,12 +4,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { IntroLoader } from "@/components/ui/intro-loader";
+import { MaintenanceGate } from "@/components/maintenance-gate";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BotsPage from "@/pages/bots";
 import PartnersPage from "@/pages/partners";
 import ProfilePage from "@/pages/profile";
 import PricingPage from "@/pages/pricing";
+import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -26,15 +28,18 @@ function Router() {
   return (
     <>
       <ScrollToTop />
-      <Switch>
-        <Route path="/" component={Landing} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/bots" component={BotsPage} />
-        <Route path="/partners" component={PartnersPage} />
-        <Route path="/profile" component={ProfilePage} />
-        <Route path="/pricing" component={PricingPage} />
-        <Route component={NotFound} />
-      </Switch>
+      <MaintenanceGate>
+        <Switch>
+          <Route path="/" component={Landing} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/bots" component={BotsPage} />
+          <Route path="/partners" component={PartnersPage} />
+          <Route path="/profile" component={ProfilePage} />
+          <Route path="/pricing" component={PricingPage} />
+          <Route path="/1admin1" component={AdminPage} />
+          <Route component={NotFound} />
+        </Switch>
+      </MaintenanceGate>
     </>
   );
 }
