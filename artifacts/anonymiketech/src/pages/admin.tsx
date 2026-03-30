@@ -6,7 +6,7 @@ import {
   Megaphone, Info, XCircle, Loader2, Lock, RefreshCw, Bot,
   Eye, EyeOff, LogOut,
 } from "lucide-react";
-import { Navbar } from "@/components/layout/navbar";
+import { AdminNavbar } from "@/components/layout/admin-navbar";
 
 const ALLOWED_ADMIN_EMAILS = [
   "anonymiketech@gmail.com",
@@ -402,34 +402,22 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
+      <AdminNavbar onRefresh={fetchStatus} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
+          className="flex items-center gap-3"
         >
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-primary" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-display font-black">Admin Panel</h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 uppercase tracking-widest">
-                Restricted
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground ml-12">ANONYMIKETECH control center · {user?.email}</p>
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-primary" />
           </div>
-          <button
-            onClick={fetchStatus}
-            className="p-2 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw className="w-4 h-4 text-muted-foreground" />
-          </button>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-display font-black leading-none">Admin Dashboard</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">ANONYMIKETECH control center</p>
+          </div>
         </motion.div>
 
         <motion.div
