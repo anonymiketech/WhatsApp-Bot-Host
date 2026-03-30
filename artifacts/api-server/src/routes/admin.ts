@@ -5,11 +5,15 @@ import { eq, desc, count } from "drizzle-orm";
 
 const router = Router();
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_EMAILS: string[] = (process.env.ADMIN_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 function isAdmin(req: any): boolean {
-  if (!ADMIN_EMAIL) return false;
-  return req.isAuthenticated() && req.user?.email === ADMIN_EMAIL;
+  if (ADMIN_EMAILS.length === 0) return false;
+  const email = (req.user?.email || "").toLowerCase();
+  return req.isAuthenticated() && ADMIN_EMAILS.includes(email);
 }
 
 async function getMaintenanceSetting(): Promise<boolean> {
