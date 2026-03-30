@@ -1,17 +1,48 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetMe } from "@/hooks/use-users";
-import { Coins, LogOut, Bot as BotIcon, Plus, Menu, X, Store } from "lucide-react";
+import { Coins, LogOut, Bot as BotIcon, Plus, Menu, X, Store, UserCircle } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { BuyCoinsModal } from "@/components/coins/buy-coins-modal";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
+
+function UserAvatar({ src, name, size = 36 }: { src?: string | null; name?: string | null; size?: number }) {
+  const initials = name ? name[0].toUpperCase() : "U";
+  if (src) {
+    return <img src={src} alt="Profile" className="rounded-full object-cover border-2 border-primary/20 flex-shrink-0" style={{ width: size, height: size }} />;
+  }
+  return (
+    <div
+      className="rounded-full flex items-center justify-center font-bold border-2 border-primary/20 flex-shrink-0"
+      style={{ width: size, height: size, background: "linear-gradient(135deg, rgba(0,229,153,0.2), rgba(34,211,238,0.2))", fontSize: size * 0.38, color: "#00e599" }}
+    >
+      {initials}
+    </div>
+  );
+}
 
 export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
   const { data: profile, isLoading: isProfileLoading } = useGetMe();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [buyCoinsOpen, setBuyCoinsOpen] = useState(false);
+  const [location] = useLocation();
+
+  const navLink = (href: string, label: string) => (
+    <Link
+      href={href}
+      className={cn(
+        "px-4 py-2 text-sm rounded-lg transition-colors font-medium",
+        location === href
+          ? "text-primary bg-primary/8"
+          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+      )}
+    >
+      {label}
+    </Link>
+  );
 
   return (
     <>
@@ -29,28 +60,16 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Center nav links (desktop) */}
+          {/* Center nav (desktop) */}
           <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-            <Link
-              href="/bots"
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-white/5 transition-colors font-medium"
-            >
-              Marketplace
-            </Link>
-            {isAuthenticated && (
-              <Link
-                href="/dashboard"
-                className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-white/5 transition-colors font-medium"
-              >
-                Dashboard
-              </Link>
-            )}
+            {navLink("/bots", "Marketplace")}
+            {isAuthenticated && navLink("/dashboard", "Dashboard")}
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
 
-            {/* Coins Display + Buy (authenticated) */}
+            {/* Coins badge */}
             {isAuthenticated && (
               <button
                 onClick={() => setBuyCoinsOpen(true)}
@@ -62,30 +81,36 @@ export function Navbar() {
                 </div>
                 <div className="flex items-center gap-1.5 ml-2 sm:ml-3">
                   <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                  <span className={cn(
-                    "font-mono font-bold text-xs sm:text-sm",
-                    isProfileLoading ? "opacity-0" : "opacity-100 transition-opacity"
-                  )}>
+                  <span className={cn("font-mono font-bold text-xs sm:text-sm", isProfileLoading ? "opacity-0" : "opacity-100 transition-opacity")}>
                     {profile?.coins ?? 0}
                   </span>
                 </div>
               </button>
             )}
 
-            {/* Avatar + logout (desktop, authenticated) */}
+            {/* Notification bell (desktop, authenticated) */}
             {isAuthenticated && (
-              <div className="hidden sm:flex items-center gap-3 border-l border-white/10 pl-4">
-                <div className="flex flex-col items-end">
-                  <span className="text-sm font-semibold text-foreground leading-tight">{user?.firstName || 'User'}</span>
-                  <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user?.email}</span>
-                </div>
-                {user?.profileImageUrl ? (
-                  <img src={user.profileImageUrl} alt="Profile" className="w-9 h-9 rounded-full border-2 border-primary/20 flex-shrink-0" />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-primary font-bold border-2 border-primary/20 flex-shrink-0">
-                    {(user?.firstName?.[0] || 'U').toUpperCase()}
+              <div className="hidden sm:block">
+                <NotificationsBell />
+              </div>
+            )}
+
+            {/* Avatar → Profile (desktop, authenticated) */}
+            {isAuthenticated && (
+              <div className="hidden sm:flex items-center gap-3 border-l border-white/10 pl-3">
+                <Link href="/profile" className="flex items-center gap-2.5 group" title="My Profile">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors">
+                      {profile?.firstName || user?.firstName || "User"}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate max-w-[100px]">{user?.email}</span>
                   </div>
-                )}
+                  <UserAvatar
+                    src={profile?.profileImageUrl ?? user?.profileImageUrl}
+                    name={profile?.firstName || user?.firstName}
+                    size={36}
+                  />
+                </Link>
                 <button
                   onClick={logout}
                   className="p-2 rounded-lg text-muted-foreground hover:bg-white/5 hover:text-destructive transition-colors"
@@ -106,7 +131,7 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Mobile dropdown menu */}
+        {/* Mobile menu */}
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
@@ -144,18 +169,29 @@ export function Navbar() {
                       Buy Coins
                     </button>
 
-                    <div className="px-4 py-3 flex items-center gap-3 border-t border-white/5 mt-1">
-                      {user?.profileImageUrl ? (
-                        <img src={user.profileImageUrl} alt="Profile" className="w-9 h-9 rounded-full border-2 border-primary/20" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-primary font-bold border-2 border-primary/20">
-                          {(user?.firstName?.[0] || 'U').toUpperCase()}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{user?.firstName || 'User'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    {/* Mobile notifications */}
+                    <div className="px-4 py-2 border-t border-white/5 mt-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notifications</span>
                       </div>
+                      <NotificationsBell />
+                    </div>
+
+                    <div className="px-4 py-3 flex items-center gap-3 border-t border-white/5 mt-1">
+                      <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 flex-1">
+                        <UserAvatar
+                          src={profile?.profileImageUrl ?? user?.profileImageUrl}
+                          name={profile?.firstName || user?.firstName}
+                          size={36}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{profile?.firstName || user?.firstName || "User"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                        </div>
+                      </Link>
+                      <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                        <UserCircle className="w-4 h-4 text-muted-foreground" />
+                      </Link>
                       <button
                         onClick={() => { logout(); setMobileMenuOpen(false); }}
                         className="flex items-center gap-2 text-sm text-destructive/80 hover:text-destructive px-3 py-2 rounded-lg hover:bg-destructive/10 transition-colors"

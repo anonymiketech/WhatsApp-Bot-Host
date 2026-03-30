@@ -4,6 +4,7 @@ import { botsTable, usersTable } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 import { botEngine } from "../services/botEngine";
 import { sql } from "drizzle-orm";
+import { createNotification } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -77,6 +78,14 @@ router.post("/bots", async (req, res) => {
 
   await botEngine.startBot(bot.id, sessionId).catch(() => {});
 
+  await createNotification(
+    userId,
+    "success",
+    `Bot "${name}" is now live 🚀`,
+    `Your WhatsApp bot has been deployed successfully. Subscription active for 30 days (${coinsPerMonth} coins charged).`,
+    "/dashboard"
+  );
+
   res.status(201).json({ bot: normalizeBotResponse(bot) });
 });
 
@@ -143,6 +152,14 @@ router.post("/bots/renew", async (req, res) => {
     .returning();
 
   await botEngine.startBot(botId, bot.sessionId).catch(() => {});
+
+  await createNotification(
+    userId,
+    "success",
+    `Bot "${bot.name}" renewed ✅`,
+    `Your subscription has been extended by 30 days. New expiry: ${newExpiresAt.toLocaleDateString()}.`,
+    "/dashboard"
+  );
 
   res.json({ bot: normalizeBotResponse(updatedBot) });
 });

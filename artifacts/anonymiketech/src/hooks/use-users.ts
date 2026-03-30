@@ -16,9 +16,36 @@ export function useGetMe() {
   });
 }
 
+export interface UpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation<UserProfile, ErrorEnvelope, UpdateProfileRequest>({
+    mutationFn: async (data) => {
+      const res = await fetch("/api/users/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || "Failed to update profile");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/users/me"], data);
+    },
+  });
+}
+
 export function useAddCoins() {
   const queryClient = useQueryClient();
-  
   return useMutation<UserProfile, ErrorEnvelope, AddCoinsRequest>({
     mutationFn: async (data) => {
       const res = await fetch("/api/users/add-coins", {
@@ -29,12 +56,11 @@ export function useAddCoins() {
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to add coins");
+        throw new Error((errorData as { error?: string }).error || "Failed to add coins");
       }
       return res.json();
     },
     onSuccess: (data) => {
-      // Optimistically update the user profile cache with new coins
       queryClient.setQueryData(["/api/users/me"], data);
     },
   });

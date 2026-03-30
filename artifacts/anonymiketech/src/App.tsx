@@ -7,6 +7,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import BotsPage from "@/pages/bots";
 import PartnersPage from "@/pages/partners";
+import ProfilePage from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/bots" component={BotsPage} />
       <Route path="/partners" component={PartnersPage} />
+      <Route path="/profile" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>
   );

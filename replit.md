@@ -79,7 +79,13 @@ All routes prefixed with `/api`:
 
 ### Users
 - `GET /users/me` — profile + coin balance
+- `PUT /users/profile` — update firstName, lastName, profileImageUrl (with notification)
 - `POST /users/add-coins` — add coins (testing)
+
+### Notifications
+- `GET /notifications` — list notifications (unread first, max 50)
+- `POST /notifications/:id/read` — mark one as read
+- `POST /notifications/read-all` — mark all as read
 
 ## Bot Engine
 
@@ -126,8 +132,12 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 
 ### `artifacts/anonymiketech` (`@workspace/anonymiketech`)
 - React + Vite frontend
-- Pages: Landing (unauthenticated), Dashboard (authenticated)
+- Pages: Landing, Bots marketplace, Dashboard, Partners (/partners), Profile (/profile), NotFound
+- Components: Navbar (bell icon + avatar → /profile), NotificationsBell (dropdown, 30s polling), Footer
 - Auth via `@workspace/replit-auth-web` (`useAuth()`)
+- Hooks: `use-notifications` (useNotifications, useMarkRead, useMarkAllRead), `use-users` (useGetMe, useUpdateProfile, useAddCoins)
+- PWA manifest at `/manifest.json`, theme-color #00e599
+- Intro spiral loader on every page; SectionLoader for dashboard sections
 - Depends on: `@workspace/api-client-react`, `@workspace/replit-auth-web`
 
 ### `lib/replit-auth-web`

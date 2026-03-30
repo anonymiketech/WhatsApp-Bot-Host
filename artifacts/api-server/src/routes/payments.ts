@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { usersTable, transactionsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import { createNotification } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -147,7 +148,15 @@ router.post("/payments/check-status", async (req, res) => {
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.id));
     if (user) {
-      await db.update(usersTable).set({ coins: user.coins + txn.coinsAmount }).where(eq(usersTable.id, user.id));
+      const newCoins = user.coins + txn.coinsAmount;
+      await db.update(usersTable).set({ coins: newCoins }).where(eq(usersTable.id, user.id));
+      await createNotification(
+        user.id,
+        "success",
+        `${txn.coinsAmount} coins added 💰`,
+        `Your M-Pesa payment of KES ${txn.kesAmount} was successful. You now have ${newCoins} coins.`,
+        "/dashboard"
+      );
     }
 
     res.json({ status: "completed", coins: txn.coinsAmount, transactionCode: pfStatus.transaction_code });

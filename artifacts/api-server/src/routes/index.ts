@@ -5,6 +5,7 @@ import botsRouter from "./bots";
 import usersRouter from "./users";
 import paymentsRouter from "./payments";
 import partnersRouter from "./partners";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(botsRouter);
 router.use(usersRouter);
 router.use(paymentsRouter);
 router.use(partnersRouter);
+router.use(notificationsRouter);
 
 export default router;
