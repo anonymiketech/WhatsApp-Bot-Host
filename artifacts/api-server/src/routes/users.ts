@@ -17,7 +17,7 @@ function userPayload(user: typeof usersTable.$inferSelect) {
   };
 }
 
-router.get("/api/users/me", async (req, res) => {
+router.get("/users/me", async (req, res) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -26,7 +26,7 @@ router.get("/api/users/me", async (req, res) => {
   return res.json(userPayload(user));
 });
 
-router.put("/api/users/profile", async (req, res) => {
+router.put("/users/profile", async (req, res) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -65,7 +65,7 @@ router.put("/api/users/profile", async (req, res) => {
   return res.json(userPayload(updated));
 });
 
-router.post("/api/users/add-coins", async (req, res) => {
+router.post("/users/add-coins", async (req, res) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Unauthorized" });
   }

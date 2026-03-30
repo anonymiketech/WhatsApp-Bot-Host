@@ -5,15 +5,14 @@ import { eq, desc, count } from "drizzle-orm";
 
 const router = Router();
 
-const ADMIN_EMAILS: string[] = (process.env.ADMIN_EMAILS || "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-
 function isAdmin(req: any): boolean {
-  if (ADMIN_EMAILS.length === 0) return false;
+  const adminEmails = (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (adminEmails.length === 0) return false;
   const email = (req.user?.email || "").toLowerCase();
-  return req.isAuthenticated() && ADMIN_EMAILS.includes(email);
+  return req.isAuthenticated() && adminEmails.includes(email);
 }
 
 async function getMaintenanceSetting(): Promise<boolean> {
@@ -27,12 +26,12 @@ async function getMaintenanceSetting(): Promise<boolean> {
   }
 }
 
-router.get("/api/maintenance-status", async (req, res) => {
+router.get("/maintenance-status", async (req, res) => {
   const maintenance = await getMaintenanceSetting();
   return res.json({ maintenance, isAdmin: isAdmin(req) });
 });
 
-router.get("/api/admin/status", async (req, res) => {
+router.get("/admin/status", async (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
   const maintenance = await getMaintenanceSetting();
   const [userCountRow] = await db.select({ count: count() }).from(usersTable);
@@ -57,7 +56,7 @@ router.get("/api/admin/status", async (req, res) => {
   });
 });
 
-router.post("/api/admin/maintenance", async (req, res) => {
+router.post("/admin/maintenance", async (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
   const { enabled } = req.body as { enabled: boolean };
   await db
@@ -70,7 +69,7 @@ router.post("/api/admin/maintenance", async (req, res) => {
   return res.json({ success: true, maintenance: enabled });
 });
 
-router.post("/api/admin/notify-all", async (req, res) => {
+router.post("/admin/notify-all", async (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
   const { type, title, message, link } = req.body as {
     type: string;
