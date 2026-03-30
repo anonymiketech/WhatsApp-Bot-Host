@@ -10,7 +10,7 @@ import {
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
-import { createNotification } from "../lib/notify";
+import { createNotification, ensureWelcomeNotification } from "../lib/notify";
 import {
   clearSession,
   getOidcConfig,
@@ -192,6 +192,7 @@ router.get("/callback", async (req: Request, res: Response) => {
   }
 
   const dbUser = await upsertReplitUser(claims as unknown as Record<string, unknown>);
+  await ensureWelcomeNotification(dbUser.id);
 
   const now = Math.floor(Date.now() / 1000);
   const sessionData: SessionData = {
@@ -295,6 +296,7 @@ router.post("/auth/email/login", async (req: Request, res: Response) => {
     return;
   }
 
+  await ensureWelcomeNotification(user.id);
   const sid = await buildSession(user);
   setSessionCookie(res, sid);
   res.json({ success: true });
@@ -392,6 +394,7 @@ router.get("/auth/github/callback", async (req: Request, res: Response) => {
         .set({ githubId, firstName: firstName ?? existing.firstName, lastName: lastName ?? existing.lastName, profileImageUrl: profile.avatar_url ?? existing.profileImageUrl, updatedAt: new Date() })
         .where(eq(usersTable.id, existing.id))
         .returning();
+      await ensureWelcomeNotification(user.id);
     } else {
       [user] = await db
         .insert(usersTable)
@@ -525,6 +528,7 @@ router.get("/auth/google/callback", async (req: Request, res: Response) => {
         .set({ googleId, firstName: firstName ?? existing.firstName, lastName: lastName ?? existing.lastName, profileImageUrl: profileImageUrl ?? existing.profileImageUrl, updatedAt: new Date() })
         .where(eq(usersTable.id, existing.id))
         .returning();
+      await ensureWelcomeNotification(user.id);
     } else {
       [user] = await db
         .insert(usersTable)
