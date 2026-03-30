@@ -31,4 +31,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-ADMIN_EMAIL = "devsmourice2030@gmail.com"
+ADMIN_EMAIL = "admin@anonymiketech.online"
