@@ -87,10 +87,17 @@ export function BuyCoinsModal({ open, onClose }: BuyCoinsModalProps) {
     return () => { if (pollRef.current) clearTimeout(pollRef.current); };
   }, [step, transactionId, pollCount, queryClient]);
 
+  const normalizePhone = (v: string) => {
+    let s = v.replace(/[\s\-()]/g, "");
+    if (s.startsWith("+")) s = s.slice(1);
+    if (s.startsWith("0")) s = "254" + s.slice(1);
+    return s;
+  };
+
   const validatePhone = (v: string) => {
-    const clean = v.replace(/\D/g, "");
-    if (!clean) return "Phone number is required";
-    if (!/^2547\d{8}$/.test(clean)) return "Format: 2547XXXXXXXX (e.g. 254712345678)";
+    if (!v.trim()) return "Phone number is required";
+    const normalized = normalizePhone(v);
+    if (!/^254\d{9}$/.test(normalized)) return "Enter: 0712345678 / +254712345678 / 254712345678";
     return "";
   };
 
@@ -100,7 +107,7 @@ export function BuyCoinsModal({ open, onClose }: BuyCoinsModalProps) {
     if (!selectedPkg) return;
     setIsSubmitting(true);
     const data = await apiPost("payments/initiate", {
-      phone: phone.replace(/\D/g, ""),
+      phone: normalizePhone(phone),
       packageId: selectedPkg.id,
     });
     setIsSubmitting(false);
@@ -228,7 +235,7 @@ export function BuyCoinsModal({ open, onClose }: BuyCoinsModalProps) {
                       type="tel"
                       value={phone}
                       onChange={(e) => { setPhone(e.target.value); setPhoneError(""); }}
-                      placeholder="2547XXXXXXXX"
+                      placeholder="e.g. 0712345678"
                       className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-primary/50 focus:outline-none focus:bg-white/[0.06] text-sm transition-all placeholder:text-muted-foreground/50 font-mono"
                     />
                     {phoneError && (
@@ -237,7 +244,7 @@ export function BuyCoinsModal({ open, onClose }: BuyCoinsModalProps) {
                       </p>
                     )}
                     <p className="mt-1.5 text-[11px] text-muted-foreground">
-                      Format: 254712345678 — include country code, no spaces or dashes
+                      Accepted: 0712345678 · 0112345678 · +254712345678 · 254712345678
                     </p>
                   </div>
 

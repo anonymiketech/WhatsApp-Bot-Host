@@ -53,9 +53,12 @@ router.post("/payments/initiate", async (req, res) => {
     return;
   }
 
-  const cleanPhone = phone.replace(/\D/g, "");
-  if (!/^2547\d{8}$/.test(cleanPhone)) {
-    res.status(400).json({ error: "Phone must be in format 2547XXXXXXXX" });
+  let cleanPhone = phone.replace(/[\s\-()]/g, "");
+  // Normalize: +254XXXXXXXXX → 254XXXXXXXXX, 07XXXXXXXX or 01XXXXXXXX → 254XXXXXXXXX
+  if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.slice(1);
+  if (cleanPhone.startsWith("0")) cleanPhone = "254" + cleanPhone.slice(1);
+  if (!/^254\d{9}$/.test(cleanPhone)) {
+    res.status(400).json({ error: "Enter a valid Kenyan phone: 07XXXXXXXX, 01XXXXXXXX, 254XXXXXXXXX or +254XXXXXXXXX" });
     return;
   }
 

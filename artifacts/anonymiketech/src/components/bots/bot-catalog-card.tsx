@@ -51,11 +51,15 @@ export function BotCatalogCard({ bot, index = 0, onDeploy, compact }: BotCatalog
 
           {/* Coin badge */}
           <div
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold flex-shrink-0"
-            style={{ background: `${bot.accent}15`, color: bot.accent }}
+            className="flex flex-col items-end flex-shrink-0"
           >
-            <Coins className="w-3 h-3" />
-            {bot.coinsPerDay}/day
+            <div
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold"
+              style={{ background: `${bot.accent}15`, color: bot.accent }}
+            >
+              <Coins className="w-3 h-3" />
+              {bot.coinsPerDay * 30}/mo
+            </div>
           </div>
         </div>
 

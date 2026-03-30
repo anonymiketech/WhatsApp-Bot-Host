@@ -7,20 +7,59 @@ import { sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-router.post("/bots/save-session", async (req, res) => {
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+function normalizeBotResponse(bot: typeof botsTable.$inferSelect, coinsOverride?: number) {
+  return {
+    id: bot.id,
+    name: bot.name,
+    status: bot.status,
+    botTypeId: bot.botTypeId ?? null,
+    coinsPerMonth: coinsOverride ?? bot.coinsPerMonth,
+    expiresAt: bot.expiresAt ? bot.expiresAt.toISOString() : null,
+    createdAt: bot.createdAt.toISOString(),
+  };
+}
+
+// Deploy a bot — charge coins for 30 days and start it
+router.post("/bots", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
 
-  const { name, sessionId } = req.body;
+  const { name, sessionId, botType, coinsPerDay } = req.body as {
+    name?: string;
+    sessionId?: string;
+    botType?: string;
+    coinsPerDay?: number;
+  };
 
   if (!name || !sessionId) {
     res.status(400).json({ error: "name and sessionId are required" });
     return;
   }
 
-  const userId = req.user.id;
+  const perDay = typeof coinsPerDay === "number" && coinsPerDay > 0 ? coinsPerDay : 30;
+  const coinsPerMonth = perDay * 30;
+
+  const userId = req.user!.id;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  if (user.coins < coinsPerMonth) {
+    res.status(400).json({
+      error: `Insufficient coins. You need ${coinsPerMonth} coins for a 30-day subscription.`,
+    });
+    return;
+  }
+
+  await db.update(usersTable).set({ coins: user.coins - coinsPerMonth }).where(eq(usersTable.id, userId));
+
+  const expiresAt = new Date(Date.now() + THIRTY_DAYS_MS);
 
   const [bot] = await db
     .insert(botsTable)
@@ -29,20 +68,16 @@ router.post("/bots/save-session", async (req, res) => {
       userId,
       name,
       sessionId,
-      status: "stopped",
+      botTypeId: botType ?? null,
+      coinsPerMonth,
+      status: "running",
+      expiresAt,
     })
     .returning();
 
-  res.status(201).json({
-    bot: {
-      id: bot.id,
-      name: bot.name,
-      status: bot.status,
-      coins: 50,
-      expiresAt: bot.expiresAt ? bot.expiresAt.toISOString() : null,
-      createdAt: bot.createdAt.toISOString(),
-    },
-  });
+  await botEngine.startBot(bot.id, sessionId).catch(() => {});
+
+  res.status(201).json({ bot: normalizeBotResponse(bot) });
 });
 
 router.get("/bots/my-bots", async (req, res) => {
@@ -51,43 +86,30 @@ router.get("/bots/my-bots", async (req, res) => {
     return;
   }
 
-  const userId = req.user.id;
+  const userId = req.user!.id;
   const bots = await db.select().from(botsTable).where(eq(botsTable.userId, userId));
 
-  res.json({
-    bots: bots.map((bot) => ({
-      id: bot.id,
-      name: bot.name,
-      status: bot.status,
-      coins: 50,
-      expiresAt: bot.expiresAt ? bot.expiresAt.toISOString() : null,
-      createdAt: bot.createdAt.toISOString(),
-    })),
-  });
+  res.json({ bots: bots.map((b) => normalizeBotResponse(b)) });
 });
 
-router.post("/bots/start-bot", async (req, res) => {
+// Renew a bot subscription for another 30 days
+router.post("/bots/renew", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
 
-  const { botId } = req.body;
+  const { botId } = req.body as { botId?: string };
   if (!botId) {
     res.status(400).json({ error: "botId is required" });
     return;
   }
 
-  const userId = req.user.id;
+  const userId = req.user!.id;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user) {
     res.status(404).json({ error: "User not found" });
-    return;
-  }
-
-  if (user.coins < 50) {
-    res.status(400).json({ error: "Insufficient coins. You need at least 50 coins to start a bot." });
     return;
   }
 
@@ -101,31 +123,68 @@ router.post("/bots/start-bot", async (req, res) => {
     return;
   }
 
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  if (user.coins < bot.coinsPerMonth) {
+    res.status(400).json({
+      error: `Insufficient coins. You need ${bot.coinsPerMonth} coins to renew for 30 days.`,
+    });
+    return;
+  }
 
-  await db
-    .update(usersTable)
-    .set({ coins: user.coins - 50 })
-    .where(eq(usersTable.id, userId));
+  await db.update(usersTable).set({ coins: user.coins - bot.coinsPerMonth }).where(eq(usersTable.id, userId));
+
+  // Extend from today or from existing expiry, whichever is later
+  const baseDate = bot.expiresAt && bot.expiresAt > new Date() ? bot.expiresAt : new Date();
+  const newExpiresAt = new Date(baseDate.getTime() + THIRTY_DAYS_MS);
 
   const [updatedBot] = await db
     .update(botsTable)
-    .set({ status: "running", expiresAt })
+    .set({ status: "running", expiresAt: newExpiresAt })
     .where(eq(botsTable.id, botId))
     .returning();
 
-  await botEngine.startBot(botId, bot.sessionId);
+  await botEngine.startBot(botId, bot.sessionId).catch(() => {});
 
-  res.json({
-    bot: {
-      id: updatedBot.id,
-      name: updatedBot.name,
-      status: updatedBot.status,
-      coins: 50,
-      expiresAt: updatedBot.expiresAt ? updatedBot.expiresAt.toISOString() : null,
-      createdAt: updatedBot.createdAt.toISOString(),
-    },
-  });
+  res.json({ bot: normalizeBotResponse(updatedBot) });
+});
+
+router.post("/bots/start-bot", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { botId } = req.body as { botId?: string };
+  if (!botId) {
+    res.status(400).json({ error: "botId is required" });
+    return;
+  }
+
+  const userId = req.user!.id;
+  const [bot] = await db
+    .select()
+    .from(botsTable)
+    .where(and(eq(botsTable.id, botId), eq(botsTable.userId, userId)));
+
+  if (!bot) {
+    res.status(404).json({ error: "Bot not found" });
+    return;
+  }
+
+  // Check subscription is still valid
+  if (!bot.expiresAt || bot.expiresAt <= new Date()) {
+    res.status(400).json({ error: "Subscription expired. Please renew your bot to continue." });
+    return;
+  }
+
+  const [updatedBot] = await db
+    .update(botsTable)
+    .set({ status: "running" })
+    .where(eq(botsTable.id, botId))
+    .returning();
+
+  await botEngine.startBot(botId, bot.sessionId).catch(() => {});
+
+  res.json({ bot: normalizeBotResponse(updatedBot) });
 });
 
 router.post("/bots/stop-bot", async (req, res) => {
@@ -134,14 +193,13 @@ router.post("/bots/stop-bot", async (req, res) => {
     return;
   }
 
-  const { botId } = req.body;
+  const { botId } = req.body as { botId?: string };
   if (!botId) {
     res.status(400).json({ error: "botId is required" });
     return;
   }
 
-  const userId = req.user.id;
-
+  const userId = req.user!.id;
   const [bot] = await db
     .select()
     .from(botsTable)
@@ -156,20 +214,38 @@ router.post("/bots/stop-bot", async (req, res) => {
 
   const [updatedBot] = await db
     .update(botsTable)
-    .set({ status: "stopped", expiresAt: null })
+    .set({ status: "stopped" })
     .where(eq(botsTable.id, botId))
     .returning();
 
-  res.json({
-    bot: {
-      id: updatedBot.id,
-      name: updatedBot.name,
-      status: updatedBot.status,
-      coins: 50,
-      expiresAt: null,
-      createdAt: updatedBot.createdAt.toISOString(),
-    },
-  });
+  res.json({ bot: normalizeBotResponse(updatedBot) });
+});
+
+// Legacy save-session (kept for backward compat, now just saves without charging)
+router.post("/bots/save-session", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { name, sessionId } = req.body as { name?: string; sessionId?: string };
+  if (!name || !sessionId) {
+    res.status(400).json({ error: "name and sessionId are required" });
+    return;
+  }
+
+  const [bot] = await db
+    .insert(botsTable)
+    .values({
+      id: sql`gen_random_uuid()` as unknown as string,
+      userId: req.user!.id,
+      name,
+      sessionId,
+      status: "stopped",
+    })
+    .returning();
+
+  res.status(201).json({ bot: normalizeBotResponse(bot) });
 });
 
 export default router;

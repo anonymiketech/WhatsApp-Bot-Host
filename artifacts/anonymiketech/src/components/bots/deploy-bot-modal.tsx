@@ -148,11 +148,17 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
               </div>
 
               {/* Cost */}
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-secondary/40 border border-white/5 mb-6">
-                <span className="text-sm text-muted-foreground">Daily cost</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-lg font-bold" style={{ color: bot.accent }}>{bot.coinsPerDay}</span>
-                  <span className="text-sm text-muted-foreground font-medium">coins / day</span>
+              <div className="rounded-xl bg-secondary/40 border border-white/5 mb-6 overflow-hidden">
+                <div className="flex items-center justify-between p-3.5">
+                  <span className="text-sm text-muted-foreground">Monthly subscription</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg font-bold" style={{ color: bot.accent }}>{bot.coinsPerDay * 30}</span>
+                    <span className="text-sm text-muted-foreground font-medium">coins / 30 days</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between px-3.5 pb-3 text-xs text-muted-foreground border-t border-white/5 pt-2.5">
+                  <span>Renews every 30 days from your deploy date</span>
+                  <span>{bot.coinsPerDay} coins/day</span>
                 </div>
               </div>
 

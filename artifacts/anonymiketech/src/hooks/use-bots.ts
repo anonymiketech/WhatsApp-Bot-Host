@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { 
-  BotsListResponse, 
-  SaveSessionRequest, 
-  BotResponse, 
-  BotActionRequest, 
-  ErrorEnvelope 
-} from "@workspace/api-client-react";
+import type { Bot } from "@/types/bots";
+
+interface BotsListResponse { bots: Bot[] }
+interface BotResponse { bot: Bot }
+interface SaveSessionRequest { name: string; sessionId: string }
+interface BotActionRequest { botId: string }
+interface ErrorEnvelope extends Error { message: string }
 
 export function useGetMyBots() {
   return useQuery<BotsListResponse, ErrorEnvelope>({
@@ -86,6 +86,30 @@ export function useStopBot() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bots/my-bots"] });
+    },
+  });
+}
+
+export function useRenewBot() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BotResponse, ErrorEnvelope, BotActionRequest>({
+    mutationFn: async (data) => {
+      const res = await fetch("/api/bots/renew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to renew bot");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bots/my-bots"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
     },
   });
 }

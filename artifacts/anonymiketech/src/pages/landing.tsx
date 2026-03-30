@@ -222,10 +222,13 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="flex flex-col items-start md:items-end gap-3 flex-shrink-0">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Coins className="w-4 h-4 text-primary" />
-                    <span className="font-bold text-xl">{FEATURED_BOT.coinsPerDay}</span>
-                    <span className="text-muted-foreground">coins/day</span>
+                  <div className="flex flex-col items-start md:items-end">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Coins className="w-4 h-4 text-primary" />
+                      <span className="font-bold text-xl">{FEATURED_BOT.coinsPerDay * 30}</span>
+                      <span className="text-muted-foreground">coins/month</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{FEATURED_BOT.coinsPerDay} coins/day</span>
                   </div>
                   <button
                     onClick={() => handleDeploy(FEATURED_BOT)}
@@ -263,7 +266,7 @@ export default function Landing() {
                   <p className="text-[11px] text-muted-foreground line-clamp-2 mb-3 flex-1">{bot.tagline}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold" style={{ color: bot.accent }}>
-                      {bot.coinsPerDay} coins/day
+                      {bot.coinsPerDay * 30} coins/mo
                     </span>
                     <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
                       Deploy <ArrowRight className="w-3 h-3" />

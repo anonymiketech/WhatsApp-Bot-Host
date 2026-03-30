@@ -90,10 +90,13 @@ export default function BotsPage() {
                 <p className="text-xs sm:text-sm text-muted-foreground">{FEATURED_BOT.tagline}</p>
               </div>
               {/* Coin badge top-right on desktop */}
-              <div className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground flex-shrink-0">
-                <Coins className="w-4 h-4 text-primary" />
-                <span className="font-bold text-foreground">{FEATURED_BOT.coinsPerDay}</span>
-                <span>coins/day</span>
+              <div className="hidden sm:flex flex-col items-end flex-shrink-0">
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Coins className="w-4 h-4 text-primary" />
+                  <span className="font-bold text-foreground">{FEATURED_BOT.coinsPerDay * 30}</span>
+                  <span>coins/month</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground mt-0.5">{FEATURED_BOT.coinsPerDay} coins/day</span>
               </div>
             </div>
 
@@ -129,8 +132,8 @@ export default function BotsPage() {
               {/* Coin badge on mobile */}
               <div className="flex sm:hidden items-center gap-1.5 text-sm text-muted-foreground">
                 <Coins className="w-4 h-4 text-primary" />
-                <span className="font-bold text-foreground">{FEATURED_BOT.coinsPerDay}</span>
-                <span>coins/day</span>
+                <span className="font-bold text-foreground">{FEATURED_BOT.coinsPerDay * 30}</span>
+                <span>coins/mo</span>
               </div>
             </div>
           </div>
