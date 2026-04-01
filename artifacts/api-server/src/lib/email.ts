@@ -1,7 +1,6 @@
 import { Resend } from "resend";
 
-const NOREPLY = "ANONYMIKETECH <noreply@anonymiketech.online>";
-const INFO    = "ANONYMIKETECH <info@anonymiketech.online>";
+const DEVS = "ANONYMIKETECH <devs@anonymiketech.online>";
 const YEAR    = new Date().getFullYear();
 const LOGO_URL = "https://bots.anonymiketech.online/images/opengraph.jpg";
 
@@ -174,7 +173,8 @@ export async function sendVerificationEmail(
   }
 
   await client.emails.send({
-    from: NOREPLY,
+    from: DEVS,
+    reply_to: "devs@anonymiketech.online",
     to,
     subject: `${code} — Your ANONYMIKETECH verification code`,
     html: shell(body),
@@ -268,7 +268,8 @@ export async function sendWarningEmail(
   }
 
   await client.emails.send({
-    from: INFO,
+    from: DEVS,
+    reply_to: "devs@anonymiketech.online",
     to,
     subject: "⚠️ Your ANONYMIKETECH account will be deleted in 2 days",
     html: shell(body),
