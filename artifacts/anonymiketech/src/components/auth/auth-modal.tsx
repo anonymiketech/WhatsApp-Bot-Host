@@ -264,7 +264,7 @@ function VerifyStep({
       </div>
 
       <p className="mt-4 text-[10px] text-center text-muted-foreground border-t border-white/5 pt-4">
-        Codes expire after 15 minutes. Check spam if you don't see it.
+        Codes expire after 5 minutes. Check spam if you don't see it.
       </p>
     </motion.div>
   );

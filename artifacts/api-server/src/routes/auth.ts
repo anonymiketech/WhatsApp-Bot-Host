@@ -281,7 +281,7 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
     if (!existing.emailVerified) {
       const result = await issueVerificationCode(existing.id, email);
       if (!result.cooldownSeconds) {
-        await sendVerificationEmail(email, result.code).catch(console.error);
+        await sendVerificationEmail(email, result.code, existing.firstName, existing.profileImageUrl).catch(console.error);
       }
       res.status(409).json({ error: "Account exists but not verified. A new code has been sent.", needsVerification: true });
       return;
@@ -304,7 +304,7 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
     .returning();
 
   const result = await issueVerificationCode(user.id, email, true);
-  await sendVerificationEmail(email, result.code).catch(console.error);
+  await sendVerificationEmail(email, result.code, firstName || null, null).catch(console.error);
 
   res.json({ needsVerification: true });
 });
@@ -402,7 +402,7 @@ router.post("/auth/email/resend", async (req: Request, res: Response) => {
     });
     return;
   }
-  await sendVerificationEmail(email, result.code).catch(console.error);
+  await sendVerificationEmail(email, result.code, user.firstName, user.profileImageUrl).catch(console.error);
   res.json({ success: true });
 });
 
@@ -432,7 +432,7 @@ router.post("/auth/email/login", async (req: Request, res: Response) => {
   if (!user.emailVerified) {
     const result = await issueVerificationCode(user.id, email);
     if (!result.cooldownSeconds) {
-      await sendVerificationEmail(email, result.code).catch(console.error);
+      await sendVerificationEmail(email, result.code, user.firstName, user.profileImageUrl).catch(console.error);
     }
     res.status(403).json({ error: "Please verify your email first. A new code has been sent.", needsVerification: true });
     return;

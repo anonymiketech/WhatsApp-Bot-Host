@@ -46,13 +46,13 @@ export async function runCleanup(): Promise<void> {
       lt(usersTable.lastActiveAt, daysAgo(WARN_DAYS)),
       ne(usersTable.emailVerified, false),
     ),
-    columns: { id: true, email: true, firstName: true },
+    columns: { id: true, email: true, firstName: true, profileImageUrl: true },
   });
 
   for (const user of warnCandidates) {
     if (!user.email) continue;
     try {
-      await sendWarningEmail(user.email, user.firstName);
+      await sendWarningEmail(user.email, user.firstName, user.profileImageUrl);
       await db
         .update(usersTable)
         .set({ warningSent: true })

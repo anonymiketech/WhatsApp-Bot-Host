@@ -3,7 +3,6 @@ import { Coins, Zap, CheckCircle2, Star, Bot, Shield, Clock, MessageCircle } fro
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { BuyCoinsModal } from "@/components/coins/buy-coins-modal";
-import { AuthModal } from "@/components/auth/auth-modal";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -102,13 +101,16 @@ const FAQS = [
   },
 ];
 
+function openAuthModal(mode: "sign-in" | "sign-up") {
+  window.dispatchEvent(new CustomEvent("open-auth-modal", { detail: { mode } }));
+}
+
 export default function PricingPage() {
   const { isAuthenticated } = useAuth();
   const [buyOpen, setBuyOpen] = useState(false);
-  const [authModal, setAuthModal] = useState<"sign-in" | "sign-up" | null>(null);
 
   const handleBuy = () => {
-    if (!isAuthenticated) { setAuthModal("sign-up"); return; }
+    if (!isAuthenticated) { openAuthModal("sign-up"); return; }
     setBuyOpen(true);
   };
 
@@ -157,7 +159,7 @@ export default function PricingPage() {
           </div>
           {!isAuthenticated && (
             <button
-              onClick={() => setAuthModal("sign-up")}
+              onClick={() => openAuthModal("sign-up")}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-background flex-shrink-0 hover:opacity-90 transition-opacity"
               style={{ background: "#00e599" }}
             >
@@ -393,7 +395,7 @@ export default function PricingPage() {
               </button>
             ) : (
               <button
-                onClick={() => setAuthModal("sign-up")}
+                onClick={() => openAuthModal("sign-up")}
                 className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-background hover:opacity-90 transition-opacity"
                 style={{ background: "#00e599" }}
               >
@@ -410,7 +412,6 @@ export default function PricingPage() {
       </div>
 
       <BuyCoinsModal open={buyOpen} onClose={() => setBuyOpen(false)} />
-      <AuthModal open={authModal === "sign-up"} onOpenChange={(o) => setAuthModal(o ? "sign-up" : null)} mode="sign-up" />
       <Footer />
     </div>
   );
