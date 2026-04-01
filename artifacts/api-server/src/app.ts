@@ -5,6 +5,9 @@ import pinoHttp from "pino-http";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { scheduleCleanup } from "./lib/cleanup";
+
+scheduleCleanup(6);
 
 const app: Express = express();
 

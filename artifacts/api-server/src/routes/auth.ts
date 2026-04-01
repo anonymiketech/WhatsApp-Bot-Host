@@ -8,8 +8,9 @@ import {
   ExchangeMobileAuthorizationCodeResponse,
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
-import { db, usersTable } from "@workspace/db";
-import { eq, or } from "drizzle-orm";
+import { db, usersTable, emailVerificationsTable } from "@workspace/db";
+import { eq, or, and, lt } from "drizzle-orm";
+import { sendVerificationEmail } from "../lib/email";
 import { createNotification, ensureWelcomeNotification } from "../lib/notify";
 import {
   clearSession,
@@ -229,6 +230,18 @@ router.get("/logout", async (req: Request, res: Response) => {
 
 // ─── Email / Password ─────────────────────────────────────────────────────────
 
+function generateCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function issueVerificationCode(userId: string, email: string): Promise<string> {
+  await db.delete(emailVerificationsTable).where(eq(emailVerificationsTable.userId, userId));
+  const code = generateCode();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  await db.insert(emailVerificationsTable).values({ userId, email, code, expiresAt });
+  return code;
+}
+
 router.post("/auth/email/register", async (req: Request, res: Response) => {
   const { email, password, firstName, lastName } = req.body ?? {};
 
@@ -245,6 +258,12 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
     where: eq(usersTable.email, email),
   });
   if (existing) {
+    if (!existing.emailVerified) {
+      const code = await issueVerificationCode(existing.id, email);
+      await sendVerificationEmail(email, code).catch(console.error);
+      res.status(409).json({ error: "Account exists but not verified. A new code has been sent.", needsVerification: true });
+      return;
+    }
     res.status(409).json({ error: "An account with this email already exists" });
     return;
   }
@@ -258,8 +277,53 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
       firstName: firstName || null,
       lastName: lastName || null,
       coins: 100,
+      emailVerified: false,
     })
     .returning();
+
+  const code = await issueVerificationCode(user.id, email);
+  await sendVerificationEmail(email, code).catch(console.error);
+
+  res.json({ needsVerification: true });
+});
+
+router.post("/auth/email/verify", async (req: Request, res: Response) => {
+  const { email, code } = req.body ?? {};
+  if (!email || !code) {
+    res.status(400).json({ error: "Email and code are required" });
+    return;
+  }
+
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, email),
+  });
+  if (!user) {
+    res.status(404).json({ error: "Account not found" });
+    return;
+  }
+
+  const record = await db.query.emailVerificationsTable.findFirst({
+    where: and(
+      eq(emailVerificationsTable.userId, user.id),
+      eq(emailVerificationsTable.code, code.trim()),
+    ),
+  });
+
+  if (!record) {
+    res.status(400).json({ error: "Invalid verification code" });
+    return;
+  }
+  if (record.expiresAt < new Date()) {
+    await db.delete(emailVerificationsTable).where(eq(emailVerificationsTable.id, record.id));
+    res.status(400).json({ error: "Verification code has expired. Request a new one." });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ emailVerified: true, lastActiveAt: new Date() })
+    .where(eq(usersTable.id, user.id));
+  await db.delete(emailVerificationsTable).where(eq(emailVerificationsTable.userId, user.id));
 
   await createNotification(
     user.id,
@@ -268,8 +332,33 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
     "Your account is ready. You've received 100 free coins — deploy your first WhatsApp bot and go live in seconds!",
     "/bots"
   );
+
   const sid = await buildSession(user);
   setSessionCookie(res, sid);
+  res.json({ success: true });
+});
+
+router.post("/auth/email/resend", async (req: Request, res: Response) => {
+  const { email } = req.body ?? {};
+  if (!email) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.email, email),
+  });
+  if (!user) {
+    res.status(200).json({ success: true });
+    return;
+  }
+  if (user.emailVerified) {
+    res.status(400).json({ error: "This account is already verified" });
+    return;
+  }
+
+  const code = await issueVerificationCode(user.id, email);
+  await sendVerificationEmail(email, code).catch(console.error);
   res.json({ success: true });
 });
 
@@ -296,6 +385,14 @@ router.post("/auth/email/login", async (req: Request, res: Response) => {
     return;
   }
 
+  if (!user.emailVerified) {
+    const code = await issueVerificationCode(user.id, email);
+    await sendVerificationEmail(email, code).catch(console.error);
+    res.status(403).json({ error: "Please verify your email first. A new code has been sent.", needsVerification: true });
+    return;
+  }
+
+  await db.update(usersTable).set({ lastActiveAt: new Date() }).where(eq(usersTable.id, user.id));
   await ensureWelcomeNotification(user.id);
   const sid = await buildSession(user);
   setSessionCookie(res, sid);

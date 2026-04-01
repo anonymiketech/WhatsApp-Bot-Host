@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Bot, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Bot, Eye, EyeOff, Loader2, Mail, RotateCcw, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -37,6 +37,229 @@ function ReplitIcon({ className }: { className?: string }) {
   );
 }
 
+function CodeInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+  const digits = (value + "      ").slice(0, 6).split("");
+
+  const handleChange = (i: number, ch: string) => {
+    if (!/^\d*$/.test(ch)) return;
+    const next = digits.slice();
+    next[i] = ch.slice(-1) || " ";
+    const joined = next.join("").trimEnd();
+    onChange(joined);
+    if (ch && i < 5) inputs.current[i + 1]?.focus();
+  };
+
+  const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      const next = digits.slice();
+      if (next[i].trim()) {
+        next[i] = " ";
+      } else if (i > 0) {
+        next[i - 1] = " ";
+        inputs.current[i - 1]?.focus();
+      }
+      onChange(next.join("").trimEnd());
+    }
+    if (e.key === "ArrowLeft" && i > 0) inputs.current[i - 1]?.focus();
+    if (e.key === "ArrowRight" && i < 5) inputs.current[i + 1]?.focus();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted) {
+      onChange(pasted);
+      inputs.current[Math.min(pasted.length, 5)]?.focus();
+    }
+    e.preventDefault();
+  };
+
+  return (
+    <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={(el) => { inputs.current[i] = el; }}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={d.trim()}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onFocus={(e) => e.target.select()}
+          className="w-11 h-13 text-center text-xl font-bold rounded-xl border bg-secondary/50 focus:outline-none transition-all"
+          style={{
+            borderColor: d.trim() ? "rgba(0,229,153,0.5)" : "rgba(255,255,255,0.1)",
+            color: d.trim() ? "#00e599" : "#e4e4e7",
+            boxShadow: d.trim() ? "0 0 0 1px rgba(0,229,153,0.2)" : "none",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function VerifyStep({
+  email,
+  onSuccess,
+  onBack,
+}: {
+  email: string;
+  onSuccess: () => void;
+  onBack: () => void;
+}) {
+  const [code, setCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [countdown]);
+
+  const handleVerify = async () => {
+    if (code.trim().length !== 6) {
+      setError("Please enter the full 6-digit code.");
+      return;
+    }
+    setError(null);
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/email/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, code: code.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Verification failed.");
+        if (data.error?.includes("expired")) setCode("");
+        return;
+      }
+      onSuccess();
+    } catch {
+      setError("Connection error. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (countdown > 0) return;
+    setIsResending(true);
+    setResent(false);
+    setError(null);
+    try {
+      await fetch("/api/auth/email/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email }),
+      });
+      setResent(true);
+      setCountdown(60);
+      setCode("");
+    } catch {
+      setError("Failed to resend. Please try again.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.25 }}
+    >
+      <div className="flex flex-col items-center text-center mb-6">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+          style={{ background: "rgba(0,229,153,0.1)", border: "1px solid rgba(0,229,153,0.25)" }}
+        >
+          <Mail className="w-7 h-7" style={{ color: "#00e599" }} />
+        </div>
+        <h2 className="text-lg font-display font-bold leading-tight">Check your email</h2>
+        <p className="text-xs text-muted-foreground mt-1.5 max-w-[260px]">
+          We sent a 6-digit code to <span className="text-foreground font-semibold">{email}</span>
+        </p>
+      </div>
+
+      <div className="mb-4">
+        <CodeInput value={code} onChange={(v) => { setCode(v); setError(null); }} />
+      </div>
+
+      <AnimatePresence>
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 mb-3 text-center"
+          >
+            {error}
+          </motion.p>
+        )}
+        {resent && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-xs bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 mb-3 text-center flex items-center justify-center gap-1.5"
+            style={{ color: "#00e599" }}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            New code sent! Check your inbox.
+          </motion.p>
+        )}
+      </AnimatePresence>
+
+      <button
+        onClick={handleVerify}
+        disabled={isLoading || code.trim().length !== 6}
+        className="w-full py-2.5 rounded-lg bg-primary text-background font-bold text-sm hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.25)] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mb-3"
+      >
+        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+        Verify Email
+      </button>
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <button
+          onClick={onBack}
+          className="hover:text-foreground transition-colors"
+        >
+          ← Change email
+        </button>
+        <button
+          onClick={handleResend}
+          disabled={isResending || countdown > 0}
+          className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          <RotateCcw className="w-3 h-3" />
+          {countdown > 0 ? `Resend in ${countdown}s` : isResending ? "Sending…" : "Resend code"}
+        </button>
+      </div>
+
+      <p className="mt-4 text-[10px] text-center text-muted-foreground border-t border-white/5 pt-4">
+        Codes expire after 15 minutes. Check spam if you don't see it.
+      </p>
+    </motion.div>
+  );
+}
+
 export function AuthModal({ open, onOpenChange, mode }: AuthModalProps) {
   const { login } = useAuth();
   const isSignUp = mode === "sign-up";
@@ -47,6 +270,7 @@ export function AuthModal({ open, onOpenChange, mode }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +291,12 @@ export function AuthModal({ open, onOpenChange, mode }: AuthModalProps) {
       });
 
       const data = await res.json();
+
+      if (data.needsVerification) {
+        setVerifyEmail(email);
+        return;
+      }
+
       if (!res.ok) {
         setError(data.error || "Something went wrong. Please try again.");
         return;
@@ -102,153 +332,174 @@ export function AuthModal({ open, onOpenChange, mode }: AuthModalProps) {
     setFirstName("");
     setError(null);
     setShowPassword(false);
+    setVerifyEmail(null);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
       <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border border-white/10 bg-background shadow-2xl">
         <DialogTitle className="sr-only">
-          {isSignUp ? "Create your account" : "Sign in to your account"}
+          {verifyEmail ? "Verify your email" : isSignUp ? "Create your account" : "Sign in to your account"}
         </DialogTitle>
 
         <div className="h-0.5 w-full bg-gradient-to-r from-primary via-accent to-primary" />
 
         <div className="px-7 py-7">
-          {/* Logo + Heading */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center flex-shrink-0">
-              <Bot className="w-4.5 h-4.5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-display font-bold leading-tight">
-                {isSignUp ? "Create your account" : "Welcome back"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isSignUp ? "Start hosting WhatsApp bots today" : "Sign in to your dashboard"}
-              </p>
-            </div>
-          </div>
+          <AnimatePresence mode="wait">
+            {verifyEmail ? (
+              <VerifyStep
+                key="verify"
+                email={verifyEmail}
+                onSuccess={() => {
+                  resetForm();
+                  onOpenChange(false);
+                  window.location.href = "/dashboard";
+                }}
+                onBack={() => setVerifyEmail(null)}
+              />
+            ) : (
+              <motion.div
+                key="form"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.25 }}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4.5 h-4.5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-display font-bold leading-tight">
+                      {isSignUp ? "Create your account" : "Welcome back"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {isSignUp ? "Start hosting WhatsApp bots today" : "Sign in to your dashboard"}
+                    </p>
+                  </div>
+                </div>
 
-          {/* Email form */}
-          <form onSubmit={handleEmailSubmit} className="space-y-3 mb-4">
-            <AnimatePresence>
-              {isSignUp && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                >
+                <form onSubmit={handleEmailSubmit} className="space-y-3 mb-4">
+                  <AnimatePresence>
+                    {isSignUp && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                      >
+                        <input
+                          type="text"
+                          placeholder="First name (optional)"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <input
-                    type="text"
-                    placeholder="First name (optional)"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                    required
                     className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
                   />
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            <input
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
-            />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder={isSignUp ? "Password (min. 8 characters)" : "Password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
 
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder={isSignUp ? "Password (min. 8 characters)" : "Password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 pr-10 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+                  <AnimatePresence>
+                    {error && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2"
+                      >
+                        {error}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
 
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2"
-              >
-                {error}
-              </motion.p>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-2.5 rounded-lg bg-primary text-background font-bold text-sm hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.25)] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {isSignUp ? "Create Account" : "Sign In"}
+                  </button>
+                </form>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-xs text-muted-foreground">or continue with</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 mb-4">
+                  <button
+                    onClick={handleGitHub}
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-secondary/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-sm font-medium transition-all"
+                  >
+                    <GitHubIcon className="w-4 h-4" />
+                    GitHub
+                  </button>
+                  <button
+                    onClick={handleGoogle}
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-secondary/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-sm font-medium transition-all"
+                  >
+                    <GoogleIcon className="w-4 h-4" />
+                    Google
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleReplit}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ReplitIcon className="w-3.5 h-3.5" />
+                  Continue with Replit
+                </button>
+
+                <p className="mt-4 text-xs text-center text-muted-foreground border-t border-white/5 pt-4">
+                  {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+                  <button
+                    onClick={() => {
+                      resetForm();
+                      onOpenChange(false);
+                      setTimeout(() => {
+                        const evt = new CustomEvent("open-auth-modal", {
+                          detail: { mode: isSignUp ? "sign-in" : "sign-up" },
+                        });
+                        window.dispatchEvent(evt);
+                      }, 100);
+                    }}
+                    className="text-primary hover:underline font-semibold"
+                  >
+                    {isSignUp ? "Sign in" : "Sign up for free"}
+                  </button>
+                </p>
+              </motion.div>
             )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-2.5 rounded-lg bg-primary text-background font-bold text-sm hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,229,153,0.25)] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {isSignUp ? "Create Account" : "Sign In"}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="text-xs text-muted-foreground">or continue with</span>
-            <div className="flex-1 h-px bg-white/10" />
-          </div>
-
-          {/* Social buttons */}
-          <div className="grid grid-cols-2 gap-2.5 mb-4">
-            <button
-              onClick={handleGitHub}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-secondary/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-sm font-medium transition-all"
-            >
-              <GitHubIcon className="w-4 h-4" />
-              GitHub
-            </button>
-            <button
-              onClick={handleGoogle}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-secondary/50 hover:bg-white/10 border border-white/10 hover:border-white/20 text-sm font-medium transition-all"
-            >
-              <GoogleIcon className="w-4 h-4" />
-              Google
-            </button>
-          </div>
-
-          {/* Replit — secondary */}
-          <button
-            onClick={handleReplit}
-            className="w-full flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ReplitIcon className="w-3.5 h-3.5" />
-            Continue with Replit
-          </button>
-
-          {/* Footer */}
-          <p className="mt-4 text-xs text-center text-muted-foreground border-t border-white/5 pt-4">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button
-              onClick={() => {
-                resetForm();
-                onOpenChange(false);
-                setTimeout(() => {
-                  const evt = new CustomEvent("open-auth-modal", {
-                    detail: { mode: isSignUp ? "sign-in" : "sign-up" },
-                  });
-                  window.dispatchEvent(evt);
-                }, 100);
-              }}
-              className="text-primary hover:underline font-semibold"
-            >
-              {isSignUp ? "Sign in" : "Sign up for free"}
-            </button>
-          </p>
+          </AnimatePresence>
         </div>
       </DialogContent>
     </Dialog>
