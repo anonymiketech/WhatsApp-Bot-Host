@@ -17,11 +17,11 @@
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
-    "nodemailer": "^8.0.4",
     "openid-client": "^6.8.2",
     "pino": "^9",
     "pino-http": "^10",
-    "protobufjs": "^8.0.0"
+    "protobufjs": "^8.0.0",
+    "resend": "^6.10.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

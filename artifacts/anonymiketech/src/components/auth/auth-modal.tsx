@@ -162,12 +162,22 @@ function VerifyStep({
     setResent(false);
     setError(null);
     try {
-      await fetch("/api/auth/email/resend", {
+      const res = await fetch("/api/auth/email/resend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ email }),
       });
+      const data = await res.json();
+      if (res.status === 429 && data.cooldownSeconds) {
+        setCountdown(data.cooldownSeconds);
+        setError(null);
+        return;
+      }
+      if (!res.ok) {
+        setError(data.error || "Failed to resend.");
+        return;
+      }
       setResent(true);
       setCountdown(60);
       setCode("");

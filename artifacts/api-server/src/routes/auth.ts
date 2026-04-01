@@ -234,12 +234,32 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function issueVerificationCode(userId: string, email: string): Promise<string> {
+const CODE_TTL_MS   = 5 * 60 * 1000;
+const COOLDOWN_MS   = 60 * 1000;
+const MAX_ATTEMPTS  = 5;
+
+async function issueVerificationCode(
+  userId: string,
+  email: string,
+  allowCooldownBypass = false,
+): Promise<{ code: string; cooldownSeconds?: number }> {
+  const existing = await db.query.emailVerificationsTable.findFirst({
+    where: eq(emailVerificationsTable.userId, userId),
+  });
+
+  if (existing && !allowCooldownBypass) {
+    const elapsed = Date.now() - existing.createdAt.getTime();
+    if (elapsed < COOLDOWN_MS) {
+      const wait = Math.ceil((COOLDOWN_MS - elapsed) / 1000);
+      return { code: existing.code, cooldownSeconds: wait };
+    }
+  }
+
   await db.delete(emailVerificationsTable).where(eq(emailVerificationsTable.userId, userId));
   const code = generateCode();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + CODE_TTL_MS);
   await db.insert(emailVerificationsTable).values({ userId, email, code, expiresAt });
-  return code;
+  return { code };
 }
 
 router.post("/auth/email/register", async (req: Request, res: Response) => {
@@ -259,8 +279,10 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
   });
   if (existing) {
     if (!existing.emailVerified) {
-      const code = await issueVerificationCode(existing.id, email);
-      await sendVerificationEmail(email, code).catch(console.error);
+      const result = await issueVerificationCode(existing.id, email);
+      if (!result.cooldownSeconds) {
+        await sendVerificationEmail(email, result.code).catch(console.error);
+      }
       res.status(409).json({ error: "Account exists but not verified. A new code has been sent.", needsVerification: true });
       return;
     }
@@ -281,8 +303,8 @@ router.post("/auth/email/register", async (req: Request, res: Response) => {
     })
     .returning();
 
-  const code = await issueVerificationCode(user.id, email);
-  await sendVerificationEmail(email, code).catch(console.error);
+  const result = await issueVerificationCode(user.id, email, true);
+  await sendVerificationEmail(email, result.code).catch(console.error);
 
   res.json({ needsVerification: true });
 });
@@ -303,19 +325,34 @@ router.post("/auth/email/verify", async (req: Request, res: Response) => {
   }
 
   const record = await db.query.emailVerificationsTable.findFirst({
-    where: and(
-      eq(emailVerificationsTable.userId, user.id),
-      eq(emailVerificationsTable.code, code.trim()),
-    ),
+    where: eq(emailVerificationsTable.userId, user.id),
   });
 
   if (!record) {
-    res.status(400).json({ error: "Invalid verification code" });
+    res.status(400).json({ error: "No verification code found. Please request a new one." });
     return;
   }
   if (record.expiresAt < new Date()) {
     await db.delete(emailVerificationsTable).where(eq(emailVerificationsTable.id, record.id));
     res.status(400).json({ error: "Verification code has expired. Request a new one." });
+    return;
+  }
+  if (record.attempts >= MAX_ATTEMPTS) {
+    await db.delete(emailVerificationsTable).where(eq(emailVerificationsTable.id, record.id));
+    res.status(429).json({ error: "Too many attempts. Please request a new code." });
+    return;
+  }
+  if (record.code !== code.trim()) {
+    await db
+      .update(emailVerificationsTable)
+      .set({ attempts: record.attempts + 1 })
+      .where(eq(emailVerificationsTable.id, record.id));
+    const remaining = MAX_ATTEMPTS - (record.attempts + 1);
+    res.status(400).json({
+      error: remaining > 0
+        ? `Invalid code. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
+        : "Too many attempts. Please request a new code.",
+    });
     return;
   }
 
@@ -357,8 +394,15 @@ router.post("/auth/email/resend", async (req: Request, res: Response) => {
     return;
   }
 
-  const code = await issueVerificationCode(user.id, email);
-  await sendVerificationEmail(email, code).catch(console.error);
+  const result = await issueVerificationCode(user.id, email);
+  if (result.cooldownSeconds) {
+    res.status(429).json({
+      error: `Please wait ${result.cooldownSeconds} seconds before requesting a new code.`,
+      cooldownSeconds: result.cooldownSeconds,
+    });
+    return;
+  }
+  await sendVerificationEmail(email, result.code).catch(console.error);
   res.json({ success: true });
 });
 
@@ -386,8 +430,10 @@ router.post("/auth/email/login", async (req: Request, res: Response) => {
   }
 
   if (!user.emailVerified) {
-    const code = await issueVerificationCode(user.id, email);
-    await sendVerificationEmail(email, code).catch(console.error);
+    const result = await issueVerificationCode(user.id, email);
+    if (!result.cooldownSeconds) {
+      await sendVerificationEmail(email, result.code).catch(console.error);
+    }
     res.status(403).json({ error: "Please verify your email first. A new code has been sent.", needsVerification: true });
     return;
   }

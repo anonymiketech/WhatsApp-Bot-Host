@@ -19,6 +19,7 @@ export const usersTable = pgTable("users", {
   email: varchar("email").unique(),
   passwordHash: varchar("password_hash"),
   emailVerified: boolean("email_verified").notNull().default(true),
+  warningSent: boolean("warning_sent").notNull().default(false),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -33,6 +34,7 @@ export const emailVerificationsTable = pgTable("email_verifications", {
   userId: varchar("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   email: varchar("email").notNull(),
   code: varchar("code", { length: 6 }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
