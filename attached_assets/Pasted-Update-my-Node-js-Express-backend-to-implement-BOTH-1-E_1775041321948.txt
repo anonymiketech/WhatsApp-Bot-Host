@@ -1,0 +1,172 @@
+Update my Node.js + Express backend to implement BOTH:
+
+1. Email verification using Resend
+2. Automatic deletion of inactive user accounts with warning emails
+
+Use clean, modular structure.
+
+---
+
+## PART 1: RESEND EMAIL VERIFICATION
+
+Use Resend API (not SMTP)
+
+Environment variable:
+RESEND_API_KEY
+
+Create email service:
+
+Function:
+sendVerificationEmail(email, code)
+
+* From: "ANONYMIKETECH [noreply@anonymiketech.online](mailto:noreply@anonymiketech.online)"
+* Subject: "Verify your account"
+* HTML includes:
+
+  * App name
+  * 6-digit code (large bold)
+  * Expiry notice (5 minutes)
+
+Create helper:
+generateCode() → 6-digit number
+
+Store verification codes in memory:
+verificationCodes[email] = {
+code,
+expires,
+attempts
+}
+
+Endpoints:
+
+POST /send-code
+
+* Input: email
+* Generate code
+* Save with 5 min expiry
+* Add cooldown (60 seconds)
+* Send email
+
+POST /verify-code
+
+* Input: email, code
+* Validate:
+
+  * Exists
+  * Not expired
+  * Matches
+* Mark user as verified
+* Delete stored code
+
+---
+
+## PART 2: USER MODEL (ADD FIELDS)
+
+Each user must include:
+
+* email
+* isVerified (boolean)
+* createdAt (Date)
+* lastLoginAt (Date)
+* lastActiveAt (Date)
+* warningSent (boolean)
+
+---
+
+## PART 3: TRACK USER ACTIVITY
+
+Whenever user logs in or performs action:
+
+Update:
+lastActiveAt = new Date()
+
+---
+
+## PART 4: IDLE ACCOUNT POLICY
+
+Rules:
+
+* If inactive for 14 days → send warning email
+* If inactive for 16 days → delete account
+
+---
+
+## PART 5: WARNING EMAIL
+
+Function:
+sendWarningEmail(email) ([info@anonymiketech.online](mailto:info@anonymiketech.online))
+
+Message:
+
+* "Your account is inactive"
+* "It will be deleted in 2 days if you don’t log in"
+
+---
+
+## PART 6: CLEANUP SYSTEM (CRON JOB)
+
+Create a background job that runs every 1 hour:
+
+Loop through all users:
+
+IF:
+
+* NOT verified → delete after 24 hours
+
+IF:
+
+* lastActiveAt > 14 days AND warningSent = false:
+  → send warning email
+  → set warningSent = true
+
+IF:
+
+* lastActiveAt > 16 days:
+  → delete user
+
+---
+
+## PART 7: IMPLEMENT CRON
+
+Use node-cron or setInterval:
+
+Run every hour:
+checkInactiveUsers()
+
+---
+
+## PART 8: DELETE USER
+
+When deleting:
+
+* Remove from database
+* Log deletion
+
+---
+
+## PART 9: SECURITY & LIMITS
+
+* Limit email spam (cooldown)
+* Max verification attempts
+* Expire codes after 5 min
+
+---
+
+## PART 10: STRUCTURE FILES
+
+* services/emailService.js (Resend logic)
+* services/userCleanup.js (cron logic)
+* routes/auth.js
+* models/User.js
+
+---
+
+## OUTPUT:
+
+Return full working code for:
+
+* email service
+* verification system
+* user cleanup system
+* cron job
+* updated user model
