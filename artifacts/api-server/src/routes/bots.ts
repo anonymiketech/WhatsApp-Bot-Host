@@ -113,10 +113,16 @@ router.post("/bots", async (req, res) => {
   // Start on Pterodactyl if server ID provided
   if (pteroServerId && pterodactyl.isConfigured()) {
     try {
+      // Step 1: Write the user's session key into the server's .env file
+      logger.info({ botId: bot.id, pteroServerId }, "Injecting SESSION_ID into server .env");
+      await pterodactyl.setEnvVar(pteroServerId, "SESSION_ID", sessionId);
+
+      // Step 2: Start the server
       await pterodactyl.sendPowerSignal(pteroServerId, "start");
       await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, bot.id));
+      logger.info({ botId: bot.id }, "Pterodactyl server started after session injection");
     } catch (err) {
-      logger.error({ err, botId: bot.id }, "Pterodactyl start failed on deploy");
+      logger.error({ err, botId: bot.id }, "Pterodactyl deploy failed (env write or start)");
       await db.update(botsTable).set({ status: "stopped" }).where(eq(botsTable.id, bot.id));
     }
   } else {

@@ -110,10 +110,92 @@ export async function listServers(): Promise<{ identifier: string; name: string;
   }
 }
 
+/**
+ * Write raw content to a file on the server.
+ * Client API: POST /api/client/servers/{id}/files/write?file={path}
+ * Body is raw text (Content-Type: text/plain).
+ */
+export async function writeFile(serverId: string, filePath: string, content: string): Promise<void> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured (PTERODACTYL_URL / PTERODACTYL_API_KEY missing)");
+  }
+  const url = `${BASE}/api/client/servers/${serverId}/files/write?file=${encodeURIComponent(filePath)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${KEY}`,
+      "Content-Type": "text/plain",
+    },
+    body: content,
+  });
+  if (res.status === 204 || res.ok) return;
+  const text = await res.text();
+  throw new Error(`Pterodactyl writeFile ${filePath} → ${res.status}: ${text}`);
+}
+
+/**
+ * Read file contents from the server.
+ * Client API: GET /api/client/servers/{id}/files/contents?file={path}
+ */
+export async function readFile(serverId: string, filePath: string): Promise<string> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured");
+  }
+  const url = `${BASE}/api/client/servers/${serverId}/files/contents?file=${encodeURIComponent(filePath)}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${KEY}`,
+      "Accept": "text/plain",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Pterodactyl readFile ${filePath} → ${res.status}: ${text}`);
+  }
+  return res.text();
+}
+
+/**
+ * Inject or update a key=value pair inside a remote .env file.
+ * Reads the existing file first, replaces the key if found, appends if not.
+ */
+export async function setEnvVar(serverId: string, key: string, value: string, filePath = "/home/container/.env"): Promise<void> {
+  let existing = "";
+  try {
+    existing = await readFile(serverId, filePath);
+  } catch {
+    // File may not exist yet — start fresh
+  }
+
+  const lines = existing ? existing.split("\n") : [];
+  const keyPrefix = `${key}=`;
+  let found = false;
+
+  const updated = lines.map((line) => {
+    if (line.startsWith(keyPrefix) || line.startsWith(`${key} =`)) {
+      found = true;
+      return `${key}="${value}"`;
+    }
+    return line;
+  });
+
+  if (!found) {
+    updated.push(`${key}="${value}"`);
+  }
+
+  // Remove trailing blank lines then add a final newline
+  const content = updated.filter((l, i) => l.trim() !== "" || i < updated.length - 1).join("\n") + "\n";
+  await writeFile(serverId, filePath, content);
+}
+
 export const pterodactyl = {
   getServerStatus,
   sendPowerSignal,
   listServers,
+  writeFile,
+  readFile,
+  setEnvVar,
   isConfigured: () => Boolean(BASE && KEY),
   isAppKey,
 };
