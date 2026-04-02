@@ -8,6 +8,11 @@ export const botSettingsTable = pgTable("bot_settings", {
   githubRepoOverride: varchar("github_repo_override"),
   pterodactylServerIdOverride: varchar("pterodactyl_server_id_override"),
   notes: text("notes"),
+  // Deployment config
+  sessionEnvKey: varchar("session_env_key").default("SESSION_ID"),
+  sessionFormat: text("session_format"),
+  envTemplate: text("env_template"),
+  autoSetup: boolean("auto_setup").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

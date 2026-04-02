@@ -7,6 +7,7 @@ import {
   Eye, EyeOff, LogOut, Server, Play, Square, RotateCcw,
   Coins, Clock, Activity, Settings2, Link2, Github, ChevronDown, ChevronUp,
   BookOpen, StickyNote, AlertOctagon, CheckCheck,
+  Terminal, Key, FileCode, Download,
 } from "lucide-react";
 import { AdminNavbar } from "@/components/layout/admin-navbar";
 import { BOT_CATALOG } from "@/data/bots-catalog";
@@ -346,6 +347,10 @@ export default function AdminPage() {
     githubRepoOverride: string | null;
     pterodactylServerIdOverride: string | null;
     notes: string | null;
+    sessionEnvKey: string | null;
+    sessionFormat: string | null;
+    envTemplate: string | null;
+    autoSetup: boolean;
     updatedAt?: string;
   };
   const [botSettings, setBotSettings] = useState<Record<string, BotSetting>>({});
@@ -383,6 +388,10 @@ export default function AdminPage() {
       githubRepoOverride: draft.githubRepoOverride !== undefined ? draft.githubRepoOverride : (existing?.githubRepoOverride ?? null),
       pterodactylServerIdOverride: draft.pterodactylServerIdOverride !== undefined ? draft.pterodactylServerIdOverride : (existing?.pterodactylServerIdOverride ?? null),
       notes: draft.notes !== undefined ? draft.notes : (existing?.notes ?? null),
+      sessionEnvKey: draft.sessionEnvKey !== undefined ? draft.sessionEnvKey : (existing?.sessionEnvKey ?? "SESSION_ID"),
+      sessionFormat: draft.sessionFormat !== undefined ? draft.sessionFormat : (existing?.sessionFormat ?? null),
+      envTemplate: draft.envTemplate !== undefined ? draft.envTemplate : (existing?.envTemplate ?? null),
+      autoSetup: draft.autoSetup !== undefined ? draft.autoSetup : (existing?.autoSetup ?? false),
     };
     try {
       const res = await fetch(`/api/admin/bot-settings/${botTypeId}`, {
@@ -998,6 +1007,83 @@ export default function AdminPage() {
                             placeholder="e.g. Developer contacted, fix ETA Friday"
                             className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors"
                           />
+                        </div>
+                      </div>
+
+                      {/* Deployment Config section */}
+                      <div className="rounded-xl border border-white/8 p-4 space-y-4" style={{ background: "rgba(0,229,153,0.02)" }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Terminal className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-xs font-bold text-primary uppercase tracking-wider">Deployment Config</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                              <Key className="w-3 h-3" />
+                              Session Env Key
+                              <span className="font-normal opacity-60">(.env variable name)</span>
+                            </label>
+                            <input
+                              value={getVal("sessionEnvKey") || "SESSION_ID"}
+                              onChange={(e) => setDraft("sessionEnvKey", e.target.value)}
+                              placeholder="SESSION_ID"
+                              className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors font-mono"
+                            />
+                            <p className="text-[10px] text-muted-foreground mt-1">The .env key the bot reads its session from (e.g. SESSION_ID, SESSION, WAJS_SESSION)</p>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                              <Info className="w-3 h-3" />
+                              Session Format Hint
+                              <span className="font-normal opacity-60">(shown to users)</span>
+                            </label>
+                            <input
+                              value={getVal("sessionFormat")}
+                              onChange={(e) => setDraft("sessionFormat", e.target.value)}
+                              placeholder='e.g. Starts with "ANONYMIKETECH_"'
+                              className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors"
+                            />
+                            <p className="text-[10px] text-muted-foreground mt-1">Validation hint shown in the deploy modal to help users paste the correct format</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                            <FileCode className="w-3 h-3" />
+                            .env Template
+                            <span className="font-normal opacity-60">(full file, use {"{session}"} as placeholder)</span>
+                          </label>
+                          <textarea
+                            value={getVal("envTemplate")}
+                            onChange={(e) => setDraft("envTemplate", e.target.value)}
+                            rows={5}
+                            placeholder={`SESSION_ID="{session}"\nPREFIX="!"\nBOT_NAME="TRUTH"\nOWNER_NUMBER="254712345678"`}
+                            className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors font-mono resize-y"
+                          />
+                          <p className="text-[10px] text-muted-foreground mt-1">If set, the ENTIRE .env file is written from this template. The platform replaces <code className="px-1 bg-white/5 rounded">{"{session}"}</code> with the user's session key. Leave blank to only update the Session Env Key above.</p>
+                        </div>
+
+                        <div className="flex items-start gap-4 p-3.5 rounded-xl border border-white/8">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <Download className="w-3.5 h-3.5 text-primary" />
+                                <span className="text-xs font-semibold">Auto-Setup (git clone)</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Experimental</span>
+                              </div>
+                              <button
+                                onClick={() => setDraft("autoSetup", !(draft.autoSetup !== undefined ? draft.autoSetup : (setting?.autoSetup ?? false)))}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${(draft.autoSetup !== undefined ? draft.autoSetup : (setting?.autoSetup ?? false)) ? "bg-primary/70" : "bg-white/20"}`}
+                              >
+                                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${(draft.autoSetup !== undefined ? draft.autoSetup : (setting?.autoSetup ?? false)) ? "translate-x-4.5" : "translate-x-1"}`} />
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              When enabled + GitHub Repo Override is set: on deploy, the system starts the server, runs <code className="px-1 bg-white/5 rounded">git clone</code> + <code className="px-1 bg-white/5 rounded">npm install</code>, then restarts. Only enable for servers with an empty container and a shell-capable startup.
+                            </p>
+                          </div>
                         </div>
                       </div>
 

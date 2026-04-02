@@ -76,6 +76,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
   const [repoScan, setRepoScan] = useState<RepoScan | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isFirstBot, setIsFirstBot] = useState(false);
+  const [sessionFormatHint, setSessionFormatHint] = useState<string | null>(null);
 
   // NOTE: All hooks MUST be before any early return
   useEffect(() => {
@@ -90,13 +91,21 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
   }, [open, bot?.githubRepo]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !bot) return;
     // Check if this would be the user's first bot (free offer)
     fetch("/api/bots/my-bots", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => setIsFirstBot((data?.bots?.length ?? 1) === 0))
       .catch(() => setIsFirstBot(false));
-  }, [open]);
+    // Fetch session format hint from catalog settings
+    fetch("/api/bots/catalog-settings", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        const hint = data?.settings?.[bot.id]?.sessionFormat ?? null;
+        setSessionFormatHint(hint);
+      })
+      .catch(() => setSessionFormatHint(null));
+  }, [open, bot?.id]);
 
   // Early return AFTER all hooks
   if (!bot) return null;
@@ -447,6 +456,14 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                   rows={3}
                   className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all resize-none font-mono text-xs"
                 />
+                {sessionFormatHint && (
+                  <div className="flex items-start gap-1.5 mt-2 px-2.5 py-2 rounded-lg border border-primary/20 bg-primary/5">
+                    <span className="text-primary flex-shrink-0 mt-0.5">ℹ</span>
+                    <p className="text-[11px] leading-relaxed" style={{ color: "#a1a1aa" }}>
+                      <span className="font-semibold text-primary">Format:</span> {sessionFormatHint}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {error && (

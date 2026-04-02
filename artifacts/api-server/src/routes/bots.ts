@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { botsTable, usersTable } from "@workspace/db/schema";
+import { botsTable, usersTable, botSettingsTable } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { createNotification } from "../lib/notify";
@@ -113,12 +113,43 @@ router.post("/bots", async (req, res) => {
   // Start on Pterodactyl if server ID provided
   if (pteroServerId && pterodactyl.isConfigured()) {
     try {
-      // Step 1: Write the user's session key into the server's .env file
-      logger.info({ botId: bot.id, pteroServerId }, "Injecting SESSION_ID into server .env");
-      await pterodactyl.setEnvVar(pteroServerId, "SESSION_ID", sessionId);
+      // Load bot-specific deployment settings from DB
+      const [botCfg] = await db
+        .select()
+        .from(botSettingsTable)
+        .where(eq(botSettingsTable.botTypeId, botType ?? ""))
+        .limit(1);
 
-      // Step 2: Start the server
-      await pterodactyl.sendPowerSignal(pteroServerId, "start");
+      const envKey = botCfg?.sessionEnvKey ?? "SESSION_ID";
+      const envTemplate = botCfg?.envTemplate ?? null;
+      const shouldAutoSetup = botCfg?.autoSetup ?? false;
+      const repoUrl = botCfg?.githubRepoOverride ?? null;
+
+      logger.info({ botId: bot.id, pteroServerId, envKey, hasTemplate: !!envTemplate }, "Injecting session into server .env");
+
+      if (envTemplate) {
+        // Write a fully-rendered .env from the admin template, substituting {session}
+        const rendered = envTemplate.replace(/\{session\}/g, sessionId);
+        await pterodactyl.writeFile(pteroServerId, "/home/container/.env", rendered);
+      } else {
+        // Inject just the session key into the existing .env
+        await pterodactyl.setEnvVar(pteroServerId, envKey, sessionId);
+      }
+
+      // Auto-setup: start the server, git clone the repo, then restart
+      if (shouldAutoSetup && repoUrl) {
+        logger.info({ botId: bot.id, repoUrl }, "Auto-setup: starting server to run git clone");
+        await pterodactyl.sendPowerSignal(pteroServerId, "start");
+        // Give the container a moment to boot
+        await new Promise((r) => setTimeout(r, 5000));
+        await pterodactyl.autoSetupRepo(pteroServerId, repoUrl);
+        // Wait for npm install to complete then restart with bot files
+        await new Promise((r) => setTimeout(r, 15000));
+        await pterodactyl.sendPowerSignal(pteroServerId, "restart");
+      } else {
+        await pterodactyl.sendPowerSignal(pteroServerId, "start");
+      }
+
       await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, bot.id));
       logger.info({ botId: bot.id }, "Pterodactyl server started after session injection");
     } catch (err) {

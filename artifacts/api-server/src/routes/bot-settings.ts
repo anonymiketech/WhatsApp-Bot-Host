@@ -12,12 +12,22 @@ function isAdmin(req: any): boolean {
   return req.isAuthenticated() && adminEmails.includes((req.user?.email || "").toLowerCase());
 }
 
-// Public — returns minimal per-bot settings (disabled + message only) for all bots
+// Public — returns minimal per-bot settings for all bots (disable state + session format hint)
 router.get("/bots/catalog-settings", async (_req, res) => {
   const rows = await db.select().from(botSettingsTable);
-  const map: Record<string, { disabled: boolean; disableMessage: string | null }> = {};
+  const map: Record<string, {
+    disabled: boolean;
+    disableMessage: string | null;
+    sessionFormat: string | null;
+    sessionEnvKey: string | null;
+  }> = {};
   for (const r of rows) {
-    map[r.botTypeId] = { disabled: r.disabled, disableMessage: r.disableMessage ?? null };
+    map[r.botTypeId] = {
+      disabled: r.disabled,
+      disableMessage: r.disableMessage ?? null,
+      sessionFormat: r.sessionFormat ?? null,
+      sessionEnvKey: r.sessionEnvKey ?? null,
+    };
   }
   res.json({ settings: map });
 });
@@ -41,6 +51,10 @@ router.put("/admin/bot-settings/:botTypeId", async (req, res) => {
     githubRepoOverride,
     pterodactylServerIdOverride,
     notes,
+    sessionEnvKey,
+    sessionFormat,
+    envTemplate,
+    autoSetup,
   } = req.body as {
     disabled?: boolean;
     disableMessage?: string | null;
@@ -48,6 +62,10 @@ router.put("/admin/bot-settings/:botTypeId", async (req, res) => {
     githubRepoOverride?: string | null;
     pterodactylServerIdOverride?: string | null;
     notes?: string | null;
+    sessionEnvKey?: string | null;
+    sessionFormat?: string | null;
+    envTemplate?: string | null;
+    autoSetup?: boolean;
   };
 
   const values: Record<string, unknown> = { botTypeId, updatedAt: new Date() };
@@ -57,6 +75,10 @@ router.put("/admin/bot-settings/:botTypeId", async (req, res) => {
   if (githubRepoOverride !== undefined)           values.githubRepoOverride = githubRepoOverride || null;
   if (pterodactylServerIdOverride !== undefined)  values.pterodactylServerIdOverride = pterodactylServerIdOverride || null;
   if (notes !== undefined)                        values.notes = notes || null;
+  if (sessionEnvKey !== undefined)                values.sessionEnvKey = sessionEnvKey || "SESSION_ID";
+  if (sessionFormat !== undefined)                values.sessionFormat = sessionFormat || null;
+  if (envTemplate !== undefined)                  values.envTemplate = envTemplate || null;
+  if (typeof autoSetup === "boolean")             values.autoSetup = autoSetup;
 
   const [row] = await db
     .insert(botSettingsTable)

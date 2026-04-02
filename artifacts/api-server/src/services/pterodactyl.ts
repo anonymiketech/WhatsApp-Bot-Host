@@ -189,6 +189,29 @@ export async function setEnvVar(serverId: string, key: string, value: string, fi
   await writeFile(serverId, filePath, content);
 }
 
+/**
+ * Send a console command to a running server.
+ * Client API: POST /api/client/servers/{id}/command
+ * The server must be running for this to work.
+ */
+export async function sendCommand(serverId: string, command: string): Promise<void> {
+  await apiRequest("POST", `/servers/${serverId}/command`, { command });
+}
+
+/**
+ * Auto-setup a server by cloning a GitHub repo and running npm install.
+ * Only works when the server is already running (i.e. the egg allows it).
+ * Sends shell commands to the console in sequence.
+ */
+export async function autoSetupRepo(serverId: string, repoUrl: string): Promise<void> {
+  // Clone repo into current directory (container root)
+  await sendCommand(serverId, `git clone ${repoUrl} . 2>&1 || echo "CLONE_FAILED"`);
+  // Allow git clone to finish
+  await new Promise((r) => setTimeout(r, 8000));
+  // Install dependencies
+  await sendCommand(serverId, "npm install --omit=dev 2>&1 || npm install 2>&1");
+}
+
 export const pterodactyl = {
   getServerStatus,
   sendPowerSignal,
@@ -196,6 +219,8 @@ export const pterodactyl = {
   writeFile,
   readFile,
   setEnvVar,
+  sendCommand,
+  autoSetupRepo,
   isConfigured: () => Boolean(BASE && KEY),
   isAppKey,
 };
