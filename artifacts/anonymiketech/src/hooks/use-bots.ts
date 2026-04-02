@@ -136,3 +136,24 @@ export function useRenewBot() {
     },
   });
 }
+
+export function useDeleteBot() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ success: boolean }, ErrorEnvelope, BotActionRequest>({
+    mutationFn: async (data) => {
+      const res = await fetch(`/api/bots/${data.botId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete bot");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bots/my-bots"] });
+    },
+  });
+}

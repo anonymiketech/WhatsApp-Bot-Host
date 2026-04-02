@@ -493,6 +493,50 @@ router.get("/bots/check-repo", async (req, res) => {
   res.json({ compatible, reason, files: found, runtime, score, repoUrl, owner, repo });
 });
 
+// Delete a bot — stops it on Pterodactyl and removes from DB
+router.delete("/bots/:botId", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { botId } = req.params;
+  const userId = req.user!.id;
+
+  const [bot] = await db
+    .select()
+    .from(botsTable)
+    .where(and(eq(botsTable.id, botId), eq(botsTable.userId, userId)));
+
+  if (!bot) {
+    res.status(404).json({ error: "Bot not found" });
+    return;
+  }
+
+  // Stop on Pterodactyl if linked
+  if (bot.pterodactylServerId && pterodactyl.isConfigured()) {
+    try {
+      await pterodactyl.sendPowerSignal(bot.pterodactylServerId, "stop");
+      logger.info({ botId, pteroId: bot.pterodactylServerId }, "Stopped server before delete");
+    } catch (err) {
+      logger.warn({ err, botId }, "Failed to stop Pterodactyl server before delete — continuing anyway");
+    }
+  }
+
+  await db.delete(botsTable).where(eq(botsTable.id, botId));
+  logger.info({ botId, userId }, "Bot deleted from database");
+
+  await createNotification(
+    userId,
+    "info",
+    `Bot "${bot.name}" deleted`,
+    `Your bot instance has been permanently removed. Any remaining subscription time will not be refunded.`,
+    "/dashboard"
+  );
+
+  res.json({ success: true });
+});
+
 // Legacy save-session (kept for backward compat)
 router.post("/bots/save-session", async (req, res) => {
   if (!req.isAuthenticated()) {

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   ExternalLink, Copy, Check, Loader2, Zap, BookOpen, Github,
   Star, GitFork, AlertTriangle, CheckCircle2, XCircle, ScanSearch,
-  Container, Server, Sparkles, Gift,
+  Server, Sparkles, Gift, Terminal, ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { BotDefinition } from "@/data/bots-catalog";
@@ -19,6 +19,80 @@ interface RepoScan {
   reason: string;
   files: string[];
   runtime?: string;
+}
+
+interface LogLine {
+  id: number;
+  text: string;
+  type: "info" | "success" | "warn" | "step";
+}
+
+// Steps shown in the log terminal during deployment
+const DEPLOY_STEPS: Array<{ delay: number; text: string; type: LogLine["type"] }> = [
+  { delay: 0,    text: "Validating your session key format…",             type: "step" },
+  { delay: 800,  text: "Connecting to hosting panel (Pterodactyl)…",      type: "step" },
+  { delay: 1800, text: "Injecting session into bot config file…",          type: "step" },
+  { delay: 2800, text: "Sending start signal to bot server…",              type: "step" },
+  { delay: 3800, text: "Waiting for server to come online…",               type: "info" },
+  { delay: 5200, text: "Registering bot instance in database…",            type: "info" },
+  { delay: 6000, text: "Sending deployment notification…",                 type: "info" },
+];
+
+function DeployLog({ logs }: { logs: LogLine[] }) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
+  return (
+    <div
+      className="rounded-xl border border-white/8 overflow-hidden"
+      style={{ background: "rgba(0,0,0,0.5)" }}
+    >
+      {/* Terminal title bar */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/8" style={{ background: "rgba(255,255,255,0.03)" }}>
+        <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+        <span className="w-2.5 h-2.5 rounded-full bg-primary/60" />
+        <span className="ml-2 text-[10px] text-muted-foreground font-mono">deploy.log</span>
+      </div>
+
+      <div className="p-3 space-y-1 font-mono text-[11px] min-h-[120px] max-h-[200px] overflow-y-auto">
+        {logs.map((line) => (
+          <motion.div
+            key={line.id}
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-start gap-2"
+          >
+            <span style={{ color: "#71717a" }} className="flex-shrink-0">
+              {line.type === "success" ? "✓" : line.type === "warn" ? "!" : "›"}
+            </span>
+            <span style={{
+              color: line.type === "success" ? "#00e599"
+                : line.type === "warn" ? "#fb923c"
+                : line.type === "step" ? "#e4e4e7"
+                : "#a1a1aa"
+            }}>
+              {line.text}
+            </span>
+          </motion.div>
+        ))}
+        {/* Blinking cursor */}
+        <div className="flex items-center gap-2 mt-1">
+          <span style={{ color: "#71717a" }}>›</span>
+          <motion.span
+            animate={{ opacity: [1, 0, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="w-1.5 h-3.5 rounded-sm"
+            style={{ background: "#00e599" }}
+          />
+        </div>
+        <div ref={bottomRef} />
+      </div>
+    </div>
+  );
 }
 
 function RepoScanBadge({ scan, scanning }: { scan: RepoScan | null; scanning: boolean }) {
@@ -77,6 +151,8 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
   const [isScanning, setIsScanning] = useState(false);
   const [isFirstBot, setIsFirstBot] = useState(false);
   const [sessionFormatHint, setSessionFormatHint] = useState<string | null>(null);
+  const [deployLogs, setDeployLogs] = useState<LogLine[]>([]);
+  const logIdRef = useRef(0);
 
   // NOTE: All hooks MUST be before any early return
   useEffect(() => {
@@ -92,12 +168,10 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
 
   useEffect(() => {
     if (!open || !bot) return;
-    // Check if this would be the user's first bot (free offer)
     fetch("/api/bots/my-bots", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => setIsFirstBot((data?.bots?.length ?? 1) === 0))
       .catch(() => setIsFirstBot(false));
-    // Fetch session format hint from catalog settings
     fetch("/api/bots/catalog-settings", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
@@ -110,6 +184,10 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
   // Early return AFTER all hooks
   if (!bot) return null;
 
+  const addLog = (text: string, type: LogLine["type"] = "info") => {
+    setDeployLogs((prev) => [...prev, { id: logIdRef.current++, text, type }]);
+  };
+
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(bot.sessionLink);
     setCopied(true);
@@ -120,6 +198,14 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
     if (!sessionId.trim() || !botName.trim()) return;
     setError(null);
     setIsDeploying(true);
+    setDeployLogs([]);
+    logIdRef.current = 0;
+
+    // Schedule log line animations
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    DEPLOY_STEPS.forEach(({ delay, text, type }) => {
+      timers.push(setTimeout(() => addLog(text, type), delay));
+    });
 
     try {
       const res = await fetch("/api/bots", {
@@ -136,19 +222,29 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
       });
 
       const data = await res.json();
+      timers.forEach(clearTimeout);
+
       if (!res.ok) {
         setError(data.error || "Deployment failed. Please try again.");
+        setIsDeploying(false);
+        addLog(`Error: ${data.error || "Deployment failed"}`, "warn");
         return;
       }
 
-      setDeployed(true);
+      addLog("Bot instance registered successfully!", "success");
+      addLog(`${botName} is now live and running 🚀`, "success");
+
       setTimeout(() => {
-        onOpenChange(false);
-        window.location.reload();
-      }, 1800);
+        setDeployed(true);
+        setTimeout(() => {
+          onOpenChange(false);
+          window.location.reload();
+        }, 1800);
+      }, 600);
     } catch {
+      timers.forEach(clearTimeout);
       setError("Connection error. Please try again.");
-    } finally {
+      addLog("Connection error — please try again", "warn");
       setIsDeploying(false);
     }
   };
@@ -160,6 +256,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
       setBotName("");
       setError(null);
       setDeployed(false);
+      setDeployLogs([]);
     }
     onOpenChange(v);
   };
@@ -190,9 +287,9 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
               >
                 🚀
               </div>
-              <h3 className="text-xl font-bold">Bot is deploying!</h3>
+              <h3 className="text-xl font-bold">Bot is live!</h3>
               <p className="text-muted-foreground text-sm">
-                <span style={{ color: bot.accent }} className="font-semibold">{botName}</span> is starting up. You'll see it in your dashboard shortly.
+                <span style={{ color: bot.accent }} className="font-semibold">{botName}</span> is online and running. Check your dashboard.
               </p>
             </motion.div>
           ) : step === "info" ? (
@@ -364,6 +461,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 >
                   {isFirstBot ? <Gift className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                   {isFirstBot ? "Claim Your Free Bot" : "Deploy this Bot"}
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -376,14 +474,17 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
               className="px-7 py-6"
             >
               <button
-                onClick={() => setStep("info")}
+                onClick={() => { setStep("info"); setDeployLogs([]); setError(null); }}
                 className="text-xs text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1 transition-colors"
               >
                 ← Back to bot info
               </button>
 
               <div className="flex items-center justify-between mb-1">
-                <h3 className="text-lg font-bold">Pair & Deploy</h3>
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <Terminal className="w-4 h-4" style={{ color: "#00e599" }} />
+                  Pair & Deploy
+                </h3>
                 {isFirstBot && (
                   <span className="text-xs font-black px-2.5 py-1 rounded-full border border-primary/30 flex items-center gap-1.5" style={{ color: "#00e599", background: "rgba(0,229,153,0.1)" }}>
                     <Gift className="w-3 h-3" />
@@ -396,75 +497,104 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
               </p>
 
               {/* Panel compatibility reminder */}
-              {repoScan && (
+              {repoScan && !isDeploying && (
                 <div className="mb-4">
                   <RepoScanBadge scan={repoScan} scanning={false} />
                 </div>
               )}
 
-              {/* Step 1: Pairing link */}
-              <div className="mb-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Step 1 — Get your session key
-                </p>
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/40 border border-white/10">
-                  <code className="flex-1 text-xs text-muted-foreground truncate">{bot.sessionLink}</code>
-                  <button
-                    onClick={handleCopyLink}
-                    className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+              {/* Deployment log — shown while deploying */}
+              <AnimatePresence>
+                {isDeploying && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-4"
                   >
-                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                  <a
-                    href={bot.sessionLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
-                <p className="text-[10px] mt-1.5 flex items-start gap-1" style={{ color: "#71717a" }}>
-                  <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "#ca8a04" }} />
-                  If this link is down, it's a temporary issue on the developer's end. Please try again later.
-                </p>
-              </div>
-
-              {/* Step 2: Bot name */}
-              <div className="mb-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Step 2 — Name your instance
-                </p>
-                <input
-                  type="text"
-                  placeholder={`e.g. My ${bot.name}`}
-                  value={botName}
-                  onChange={(e) => setBotName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
-                />
-              </div>
-
-              {/* Step 3: Session ID */}
-              <div className="mb-5">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Step 3 — Paste your session key
-                </p>
-                <textarea
-                  placeholder="Paste your WhatsApp session key here..."
-                  value={sessionId}
-                  onChange={(e) => setSessionId(e.target.value)}
-                  rows={3}
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all resize-none font-mono text-xs"
-                />
-                {sessionFormatHint && (
-                  <div className="flex items-start gap-1.5 mt-2 px-2.5 py-2 rounded-lg border border-primary/20 bg-primary/5">
-                    <span className="text-primary flex-shrink-0 mt-0.5">ℹ</span>
-                    <p className="text-[11px] leading-relaxed" style={{ color: "#a1a1aa" }}>
-                      <span className="font-semibold text-primary">Format:</span> {sessionFormatHint}
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" style={{ color: "#00e599" }} />
+                      Deployment in progress…
                     </p>
-                  </div>
+                    <DeployLog logs={deployLogs} />
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
+
+              {/* Form — hidden while deploying */}
+              <AnimatePresence>
+                {!isDeploying && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    {/* Step 1: Pairing link */}
+                    <div className="mb-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Step 1 — Get your session key
+                      </p>
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/40 border border-white/10">
+                        <code className="flex-1 text-xs text-muted-foreground truncate">{bot.sessionLink}</code>
+                        <button
+                          onClick={handleCopyLink}
+                          className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                        >
+                          {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                        <a
+                          href={bot.sessionLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                      <p className="text-[10px] mt-1.5 flex items-start gap-1" style={{ color: "#71717a" }}>
+                        <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "#ca8a04" }} />
+                        If this link is down, it's a temporary issue on the developer's end. Please try again later.
+                      </p>
+                    </div>
+
+                    {/* Step 2: Bot name */}
+                    <div className="mb-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Step 2 — Name your instance
+                      </p>
+                      <input
+                        type="text"
+                        placeholder={`e.g. My ${bot.name}`}
+                        value={botName}
+                        onChange={(e) => setBotName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
+                      />
+                    </div>
+
+                    {/* Step 3: Session ID */}
+                    <div className="mb-5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Step 3 — Paste your session key
+                      </p>
+                      <textarea
+                        placeholder="Paste your WhatsApp session key here..."
+                        value={sessionId}
+                        onChange={(e) => setSessionId(e.target.value)}
+                        rows={3}
+                        className="w-full px-3.5 py-2.5 rounded-lg bg-secondary/50 border border-white/10 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all resize-none font-mono text-xs"
+                      />
+                      {sessionFormatHint && (
+                        <div className="flex items-start gap-1.5 mt-2 px-2.5 py-2 rounded-lg border border-primary/20 bg-primary/5">
+                          <span className="text-primary flex-shrink-0 mt-0.5">ℹ</span>
+                          <p className="text-[11px] leading-relaxed" style={{ color: "#a1a1aa" }}>
+                            <span className="font-semibold text-primary">Format:</span> {sessionFormatHint}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {error && (
                 <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 mb-4">
@@ -478,11 +608,25 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 className="w-full py-3 rounded-lg font-bold text-sm text-background transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ background: isFirstBot ? "#00e599" : bot.accent }}
               >
-                {isDeploying ? <Loader2 className="w-4 h-4 animate-spin" /> : isFirstBot ? <Gift className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                {isDeploying ? "Deploying..." : isFirstBot ? "Launch Free Bot Instance" : "Launch Bot Instance"}
+                {isDeploying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deploying {botName}…
+                  </>
+                ) : isFirstBot ? (
+                  <>
+                    <Gift className="w-4 h-4" />
+                    Launch Free Bot Instance
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" />
+                    Launch Bot Instance
+                  </>
+                )}
               </button>
 
-              {isFirstBot && (
+              {isFirstBot && !isDeploying && (
                 <p className="text-center text-xs mt-2" style={{ color: "#71717a" }}>
                   No coins will be deducted for this deployment 🎉
                 </p>
