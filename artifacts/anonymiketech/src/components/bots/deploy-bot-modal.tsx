@@ -151,6 +151,8 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
   const [isScanning, setIsScanning] = useState(false);
   const [isFirstBot, setIsFirstBot] = useState(false);
   const [sessionFormatHint, setSessionFormatHint] = useState<string | null>(null);
+  const [sessionLinkOverride, setSessionLinkOverride] = useState<string | null>(null);
+  const [pterodactylServerIdOverride, setPterodactylServerIdOverride] = useState<string | null>(null);
   const [deployLogs, setDeployLogs] = useState<LogLine[]>([]);
   const logIdRef = useRef(0);
 
@@ -175,21 +177,31 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
     fetch("/api/bots/catalog-settings", { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
-        const hint = data?.settings?.[bot.id]?.sessionFormat ?? null;
-        setSessionFormatHint(hint);
+        const s = data?.settings?.[bot.id];
+        setSessionFormatHint(s?.sessionFormat ?? null);
+        setSessionLinkOverride(s?.sessionLinkOverride ?? null);
+        setPterodactylServerIdOverride(s?.pterodactylServerIdOverride ?? null);
       })
-      .catch(() => setSessionFormatHint(null));
+      .catch(() => {
+        setSessionFormatHint(null);
+        setSessionLinkOverride(null);
+        setPterodactylServerIdOverride(null);
+      });
   }, [open, bot?.id]);
 
   // Early return AFTER all hooks
   if (!bot) return null;
+
+  // Use admin overrides when set, fall back to catalog defaults
+  const effectiveSessionLink = sessionLinkOverride || bot.sessionLink;
+  const effectivePteroServerId = pterodactylServerIdOverride || bot.pterodactylServerId;
 
   const addLog = (text: string, type: LogLine["type"] = "info") => {
     setDeployLogs((prev) => [...prev, { id: logIdRef.current++, text, type }]);
   };
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(bot.sessionLink);
+    await navigator.clipboard.writeText(effectiveSessionLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -217,7 +229,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
           sessionId: sessionId.trim(),
           botType: bot.id,
           coinsPerDay: bot.coinsPerDay,
-          ...(bot.pterodactylServerId ? { pterodactylServerId: bot.pterodactylServerId } : {}),
+          ...(effectivePteroServerId ? { pterodactylServerId: effectivePteroServerId } : {}),
         }),
       });
 
@@ -257,6 +269,8 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
       setError(null);
       setDeployed(false);
       setDeployLogs([]);
+      setSessionLinkOverride(null);
+      setPterodactylServerIdOverride(null);
     }
     onOpenChange(v);
   };
@@ -535,7 +549,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                         Step 1 — Get your session key
                       </p>
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/40 border border-white/10">
-                        <code className="flex-1 text-xs text-muted-foreground truncate">{bot.sessionLink}</code>
+                        <code className="flex-1 text-xs text-muted-foreground truncate">{effectiveSessionLink}</code>
                         <button
                           onClick={handleCopyLink}
                           className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
@@ -543,7 +557,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                           {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                         </button>
                         <a
-                          href={bot.sessionLink}
+                          href={effectiveSessionLink}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"

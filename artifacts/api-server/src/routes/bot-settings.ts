@@ -12,7 +12,7 @@ function isAdmin(req: any): boolean {
   return req.isAuthenticated() && adminEmails.includes((req.user?.email || "").toLowerCase());
 }
 
-// Public — returns minimal per-bot settings for all bots (disable state + session format hint)
+// Public — returns per-bot settings for all bots (disable state, overrides, format hints)
 router.get("/bots/catalog-settings", async (_req, res) => {
   const rows = await db.select().from(botSettingsTable);
   const map: Record<string, {
@@ -20,6 +20,9 @@ router.get("/bots/catalog-settings", async (_req, res) => {
     disableMessage: string | null;
     sessionFormat: string | null;
     sessionEnvKey: string | null;
+    sessionLinkOverride: string | null;
+    githubRepoOverride: string | null;
+    pterodactylServerIdOverride: string | null;
   }> = {};
   for (const r of rows) {
     map[r.botTypeId] = {
@@ -27,6 +30,9 @@ router.get("/bots/catalog-settings", async (_req, res) => {
       disableMessage: r.disableMessage ?? null,
       sessionFormat: r.sessionFormat ?? null,
       sessionEnvKey: r.sessionEnvKey ?? null,
+      sessionLinkOverride: r.sessionLinkOverride ?? null,
+      githubRepoOverride: r.githubRepoOverride ?? null,
+      pterodactylServerIdOverride: r.pterodactylServerIdOverride ?? null,
     };
   }
   res.json({ settings: map });

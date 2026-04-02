@@ -127,29 +127,32 @@ router.post("/bots", async (req, res) => {
       const configFilePath = botCfg?.configFilePath ?? "/home/container/.env";
       const configFileFormat = botCfg?.configFileFormat ?? "env";
 
-      logger.info({ botId: bot.id, pteroServerId, envKey, configFilePath, configFileFormat, hasTemplate: !!envTemplate }, "Injecting session into server config");
+      // If admin has set a pterodactylServerIdOverride in bot_settings, prefer it
+      const effectivePteroId = botCfg?.pterodactylServerIdOverride ?? pteroServerId;
+
+      logger.info({ botId: bot.id, pteroServerId, effectivePteroId, envKey, configFilePath, configFileFormat, hasTemplate: !!envTemplate }, "Injecting session into server config");
 
       if (envTemplate) {
         // Write a fully-rendered config file from the admin template, substituting {session}
         const rendered = envTemplate.replace(/\{session\}/g, sessionId);
-        await pterodactyl.writeFile(pteroServerId, configFilePath, rendered);
+        await pterodactyl.writeFile(effectivePteroId, configFilePath, rendered);
       } else {
         // Inject the session key into the existing config file with the correct format
-        await pterodactyl.setEnvVar(pteroServerId, envKey, sessionId, configFilePath, configFileFormat);
+        await pterodactyl.setEnvVar(effectivePteroId, envKey, sessionId, configFilePath, configFileFormat);
       }
 
       // Auto-setup: start the server, git clone the repo, then restart
       if (shouldAutoSetup && repoUrl) {
         logger.info({ botId: bot.id, repoUrl }, "Auto-setup: starting server to run git clone");
-        await pterodactyl.sendPowerSignal(pteroServerId, "start");
+        await pterodactyl.sendPowerSignal(effectivePteroId, "start");
         // Give the container a moment to boot
         await new Promise((r) => setTimeout(r, 5000));
-        await pterodactyl.autoSetupRepo(pteroServerId, repoUrl);
+        await pterodactyl.autoSetupRepo(effectivePteroId, repoUrl);
         // Wait for npm install to complete then restart with bot files
         await new Promise((r) => setTimeout(r, 15000));
-        await pterodactyl.sendPowerSignal(pteroServerId, "restart");
+        await pterodactyl.sendPowerSignal(effectivePteroId, "restart");
       } else {
-        await pterodactyl.sendPowerSignal(pteroServerId, "start");
+        await pterodactyl.sendPowerSignal(effectivePteroId, "start");
       }
 
       await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, bot.id));
