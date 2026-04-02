@@ -3,6 +3,17 @@ import { logger } from "../lib/logger";
 const BASE = process.env.PTERODACTYL_URL?.replace(/\/$/, "");
 const KEY  = process.env.PTERODACTYL_API_KEY;
 
+// Supports both Application API (ptla_) and Client API (ptlc_)
+// Application API  → /api/application  — uses server internal UUID for power actions
+// Client API       → /api/client       — uses short identifier
+function isAppKey() {
+  return KEY?.startsWith("ptla_") ?? false;
+}
+
+function apiBase() {
+  return isAppKey() ? `${BASE}/api/application` : `${BASE}/api/client`;
+}
+
 function headers() {
   return {
     "Authorization": `Bearer ${KEY}`,
@@ -20,7 +31,7 @@ async function apiRequest(
     throw new Error("Pterodactyl not configured (PTERODACTYL_URL / PTERODACTYL_API_KEY missing)");
   }
 
-  const url = `${BASE}/api/client${path}`;
+  const url = `${apiBase()}${path}`;
   const res = await fetch(url, {
     method,
     headers: headers(),
@@ -49,17 +60,30 @@ interface ResourcesResponse {
     resources: {
       cpu_absolute: number;
       memory_bytes: number;
-      disk_bytes: number;
       uptime: number;
     };
   };
 }
 
+/**
+ * Get server power status.
+ * App API: GET /api/application/servers/{uuid}/resources  (uuid = internal UUID)
+ * Client API: GET /api/client/servers/{id}/resources       (id = short identifier)
+ */
 export async function getServerStatus(serverId: string): Promise<PteroStatus> {
-  const data = await apiRequest("GET", `/servers/${serverId}/resources`) as ResourcesResponse;
+  const path = isAppKey()
+    ? `/servers/${serverId}/resources`
+    : `/servers/${serverId}/resources`;
+
+  const data = await apiRequest("GET", path) as ResourcesResponse;
   return data.attributes.current_state;
 }
 
+/**
+ * Send a power signal to a server.
+ * App API: POST /api/application/servers/{uuid}/power
+ * Client API: POST /api/client/servers/{id}/power
+ */
 export async function sendPowerSignal(
   serverId: string,
   signal: "start" | "stop" | "restart" | "kill",
@@ -67,11 +91,23 @@ export async function sendPowerSignal(
   await apiRequest("POST", `/servers/${serverId}/power`, { signal });
 }
 
+/**
+ * List all servers accessible with the current key.
+ * App API: GET /api/application/servers
+ * Client API: GET /api/client
+ */
 export async function listServers(): Promise<{ identifier: string; name: string; uuid: string }[]> {
-  const data = await apiRequest("GET", "/") as {
-    data: { attributes: { identifier: string; name: string; uuid: string } }[];
-  };
-  return (data?.data ?? []).map((s) => s.attributes);
+  if (isAppKey()) {
+    const data = await apiRequest("GET", "/servers") as {
+      data: { attributes: { identifier: string; name: string; uuid: string } }[];
+    };
+    return (data?.data ?? []).map((s) => s.attributes);
+  } else {
+    const data = await apiRequest("GET", "/") as {
+      data: { attributes: { identifier: string; name: string; uuid: string } }[];
+    };
+    return (data?.data ?? []).map((s) => s.attributes);
+  }
 }
 
 export const pterodactyl = {
@@ -79,4 +115,5 @@ export const pterodactyl = {
   sendPowerSignal,
   listServers,
   isConfigured: () => Boolean(BASE && KEY),
+  isAppKey,
 };

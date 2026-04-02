@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { usersTable, notificationsTable, settingsTable } from "@workspace/db/schema";
 import { eq, desc, count } from "drizzle-orm";
+import { pterodactyl } from "../services/pterodactyl";
 
 const router = Router();
 
@@ -92,6 +93,33 @@ router.post("/admin/notify-all", async (req, res) => {
     }))
   );
   return res.json({ success: true, sentTo: users.length });
+});
+
+// List Pterodactyl servers — admin only, for verifying panel connection
+router.get("/pterodactyl/servers", async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+  if (!pterodactyl.isConfigured()) {
+    return res.status(503).json({ error: "Pterodactyl not configured" });
+  }
+  try {
+    const servers = await pterodactyl.listServers();
+    return res.json({ servers, keyType: pterodactyl.isAppKey() ? "application" : "client" });
+  } catch (err: any) {
+    return res.status(502).json({ error: err?.message ?? "Failed to contact Pterodactyl panel" });
+  }
+});
+
+// Test power signal on a specific server — admin only
+router.post("/pterodactyl/power", async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+  const { serverId, signal } = req.body as { serverId?: string; signal?: string };
+  if (!serverId || !signal) return res.status(400).json({ error: "serverId and signal required" });
+  try {
+    await pterodactyl.sendPowerSignal(serverId, signal as any);
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(502).json({ error: err?.message ?? "Failed to send power signal" });
+  }
 });
 
 export default router;
