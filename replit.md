@@ -4,7 +4,7 @@
 
 **ANONYMIKETECH** — WhatsApp Bot Hosting Platform. Users log in (Email/Password, GitHub, Google, Replit), pair their WhatsApp, save their session ID, and deploy bots. Coin-based system — 30 coins/day most bots, 50 coins/day Atassa Cloud. New users receive 100 free coins + welcome notification.
 
-**Pages**: `/` (Landing), `/bots` (Marketplace), `/pricing` (Pricing), `/dashboard`, `/profile`, `/partners`
+**Pages**: `/` (Landing), `/bots` (Marketplace), `/pricing` (Pricing), `/dashboard`, `/profile`, `/partners`, `/contact` (Contact page — WhatsApp +254782829321, admin@anonymiketech.online, support@anonymiketech.online)
 
 **Notifications**: Bell visible on both desktop and mobile (top navbar). Users can mark read, mark all read, dismiss individual, or clear all. API endpoints: GET, POST (read), DELETE (single/all). Welcome notification sent on email/GitHub/Google signup.
 

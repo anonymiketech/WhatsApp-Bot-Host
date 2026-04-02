@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Bot, Zap, Coins, Search, CheckCircle2, AlertTriangle, Github, Star } from "lucide-react";
 import { BOT_CATALOG, FEATURED_BOT, type BotDefinition } from "@/data/bots-catalog";
@@ -18,6 +18,8 @@ const CATEGORIES = [
   { id: "advanced", label: "Advanced" },
 ];
 
+type CatalogSettings = Record<string, { disabled: boolean; disableMessage: string | null }>;
+
 export default function BotsPage() {
   const { isAuthenticated } = useAuth();
   const [selectedBot, setSelectedBot] = useState<BotDefinition | null>(null);
@@ -25,6 +27,14 @@ export default function BotsPage() {
   const [authModal, setAuthModal] = useState<"sign-in" | "sign-up" | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [catalogSettings, setCatalogSettings] = useState<CatalogSettings>({});
+
+  useEffect(() => {
+    fetch("/api/bots/catalog-settings")
+      .then((r) => r.json())
+      .then((d) => setCatalogSettings(d.settings ?? {}))
+      .catch(() => {});
+  }, []);
 
   const handleDeploy = (bot: BotDefinition) => {
     if (!isAuthenticated) { setAuthModal("sign-up"); return; }
@@ -233,7 +243,14 @@ export default function BotsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {filtered.map((bot, i) => (
-              <BotCatalogCard key={bot.id} bot={bot} index={i} onDeploy={handleDeploy} />
+              <BotCatalogCard
+                key={bot.id}
+                bot={bot}
+                index={i}
+                onDeploy={handleDeploy}
+                disabled={catalogSettings[bot.id]?.disabled}
+                disableMessage={catalogSettings[bot.id]?.disableMessage}
+              />
             ))}
           </div>
         )}

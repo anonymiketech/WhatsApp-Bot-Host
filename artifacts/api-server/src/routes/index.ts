@@ -7,6 +7,7 @@ import paymentsRouter from "./payments";
 import partnersRouter from "./partners";
 import notificationsRouter from "./notifications";
 import adminRouter from "./admin";
+import botSettingsRouter from "./bot-settings";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(paymentsRouter);
 router.use(partnersRouter);
 router.use(notificationsRouter);
 router.use(adminRouter);
+router.use(botSettingsRouter);
 
 export default router;

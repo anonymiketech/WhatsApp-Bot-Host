@@ -5,7 +5,8 @@ import {
   Shield, Users, Bell, Power, Send, AlertTriangle, CheckCircle2,
   Megaphone, Info, XCircle, Loader2, Lock, RefreshCw, Bot,
   Eye, EyeOff, LogOut, Server, Play, Square, RotateCcw,
-  Coins, Clock, Activity,
+  Coins, Clock, Activity, Settings2, Link2, Github, ChevronDown, ChevronUp,
+  BookOpen, StickyNote, AlertOctagon, CheckCheck,
 } from "lucide-react";
 import { AdminNavbar } from "@/components/layout/admin-navbar";
 import { BOT_CATALOG } from "@/data/bots-catalog";
@@ -336,6 +337,75 @@ export default function AdminPage() {
   const [panelActionLoading, setPanelActionLoading] = useState<string | null>(null);
   const [panelActionResult, setPanelActionResult] = useState<{ id: string; success: boolean; msg: string } | null>(null);
 
+  // Bot Catalog Management
+  type BotSetting = {
+    botTypeId: string;
+    disabled: boolean;
+    disableMessage: string | null;
+    sessionLinkOverride: string | null;
+    githubRepoOverride: string | null;
+    pterodactylServerIdOverride: string | null;
+    notes: string | null;
+    updatedAt?: string;
+  };
+  const [botSettings, setBotSettings] = useState<Record<string, BotSetting>>({});
+  const [loadingBotSettings, setLoadingBotSettings] = useState(false);
+  const [savingBotSetting, setSavingBotSetting] = useState<string | null>(null);
+  const [botSettingResult, setBotSettingResult] = useState<{ id: string; success: boolean; msg: string } | null>(null);
+  const [expandedBotSetting, setExpandedBotSetting] = useState<string | null>(null);
+  // Local edits draft
+  const [botSettingDraft, setBotSettingDraft] = useState<Record<string, Partial<BotSetting>>>({});
+
+  const fetchBotSettings = async () => {
+    setLoadingBotSettings(true);
+    try {
+      const res = await fetch("/api/admin/bot-settings", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<string, BotSetting> = {};
+        for (const s of (data.settings ?? [])) map[s.botTypeId] = s;
+        setBotSettings(map);
+      }
+    } finally {
+      setLoadingBotSettings(false);
+    }
+  };
+
+  const saveBotSetting = async (botTypeId: string) => {
+    setSavingBotSetting(botTypeId);
+    setBotSettingResult(null);
+    const draft = botSettingDraft[botTypeId] ?? {};
+    const existing = botSettings[botTypeId];
+    const payload = {
+      disabled: draft.disabled ?? existing?.disabled ?? false,
+      disableMessage: draft.disableMessage !== undefined ? draft.disableMessage : (existing?.disableMessage ?? null),
+      sessionLinkOverride: draft.sessionLinkOverride !== undefined ? draft.sessionLinkOverride : (existing?.sessionLinkOverride ?? null),
+      githubRepoOverride: draft.githubRepoOverride !== undefined ? draft.githubRepoOverride : (existing?.githubRepoOverride ?? null),
+      pterodactylServerIdOverride: draft.pterodactylServerIdOverride !== undefined ? draft.pterodactylServerIdOverride : (existing?.pterodactylServerIdOverride ?? null),
+      notes: draft.notes !== undefined ? draft.notes : (existing?.notes ?? null),
+    };
+    try {
+      const res = await fetch(`/api/admin/bot-settings/${botTypeId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBotSettings((prev) => ({ ...prev, [botTypeId]: data.setting }));
+        setBotSettingDraft((prev) => { const n = { ...prev }; delete n[botTypeId]; return n; });
+        setBotSettingResult({ id: botTypeId, success: true, msg: "Saved!" });
+      } else {
+        setBotSettingResult({ id: botTypeId, success: false, msg: data.error ?? "Failed" });
+      }
+    } catch {
+      setBotSettingResult({ id: botTypeId, success: false, msg: "Network error" });
+    } finally {
+      setSavingBotSetting(null);
+    }
+  };
+
   const fetchBots = async () => {
     setLoadingBots(true);
     try {
@@ -394,6 +464,7 @@ export default function AdminPage() {
     if (!isAuthLoading && isAuthenticated) {
       fetchStatus();
       fetchBots();
+      fetchBotSettings();
     } else if (!isAuthLoading && !isAuthenticated) {
       setLoadingStatus(false);
     }
@@ -751,6 +822,217 @@ export default function AdminPage() {
             </div>
           </motion.div>
         )}
+        {/* ── Bot Catalog Management ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden"
+        >
+          <div className="px-5 py-4 border-b border-white/8 flex items-center gap-3 flex-wrap">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Settings2 className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-bold text-sm">Bot Catalog Management</h2>
+              <p className="text-xs text-muted-foreground">Override settings, disable bots, manage session links & repos</p>
+            </div>
+            <button
+              onClick={fetchBotSettings}
+              disabled={loadingBotSettings}
+              className="ml-auto flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-white/8 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              {loadingBotSettings ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              Refresh
+            </button>
+          </div>
+
+          <div className="divide-y divide-white/5">
+            {BOT_CATALOG.map((bot) => {
+              const setting = botSettings[bot.id];
+              const draft = botSettingDraft[bot.id] ?? {};
+              const isDisabled = draft.disabled !== undefined ? draft.disabled : (setting?.disabled ?? false);
+              const isExpanded = expandedBotSetting === bot.id;
+              const isSaving = savingBotSetting === bot.id;
+              const result = botSettingResult?.id === bot.id ? botSettingResult : null;
+              const hasDraft = Object.keys(draft).length > 0;
+
+              const getVal = (key: keyof typeof draft) =>
+                draft[key] !== undefined ? (draft[key] as string ?? "") : (setting?.[key as keyof typeof setting] as string ?? "");
+
+              const setDraft = (key: string, val: unknown) =>
+                setBotSettingDraft((prev) => ({ ...prev, [bot.id]: { ...prev[bot.id], [key]: val } }));
+
+              return (
+                <div key={bot.id} className="transition-colors hover:bg-white/[0.01]">
+                  {/* Row header */}
+                  <div
+                    className="flex items-center gap-3 px-5 py-4 cursor-pointer select-none"
+                    onClick={() => setExpandedBotSetting(isExpanded ? null : bot.id)}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/10 text-xs font-bold"
+                      style={{ background: bot.accentBg, color: bot.accent }}
+                    >
+                      {bot.name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{bot.name}</span>
+                        {setting?.disabled || draft.disabled === true ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">
+                            DISABLED
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            LIVE
+                          </span>
+                        )}
+                        {hasDraft && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                            unsaved
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{bot.tagline}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {result && (
+                        <span className={`text-xs font-semibold ${result.success ? "text-primary" : "text-destructive"}`}>
+                          {result.msg}
+                        </span>
+                      )}
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                  </div>
+
+                  {/* Expanded settings */}
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="px-5 pb-5 space-y-4 border-t border-white/5 pt-4"
+                    >
+                      {/* Disable toggle */}
+                      <div className="flex items-start gap-4 p-4 rounded-xl border border-white/8"
+                        style={{ background: isDisabled ? "rgba(248,113,113,0.05)" : "rgba(0,229,153,0.03)" }}>
+                        <AlertOctagon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDisabled ? "#f87171" : "#00e599" }} />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-semibold">Bot Status</span>
+                            <button
+                              onClick={() => setDraft("disabled", !isDisabled)}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isDisabled ? "bg-red-500/80" : "bg-primary/70"}`}
+                            >
+                              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isDisabled ? "translate-x-4.5" : "translate-x-1"}`} />
+                            </button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {isDisabled ? "Bot is DISABLED — users see a message instead of the deploy button." : "Bot is LIVE and available to users."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {isDisabled && (
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                            <StickyNote className="w-3 h-3" />
+                            Disable Message <span className="font-normal opacity-60">(shown to users)</span>
+                          </label>
+                          <input
+                            value={getVal("disableMessage")}
+                            onChange={(e) => setDraft("disableMessage", e.target.value)}
+                            placeholder="e.g. This bot is temporarily unavailable for maintenance. Check back soon."
+                            className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-sm placeholder:text-muted-foreground focus:outline-none focus:border-red-400/40 transition-colors"
+                          />
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                            <Link2 className="w-3 h-3" />
+                            Session Link Override
+                          </label>
+                          <input
+                            value={getVal("sessionLinkOverride")}
+                            onChange={(e) => setDraft("sessionLinkOverride", e.target.value)}
+                            placeholder={`Default: ${bot.sessionLink.slice(0, 36)}…`}
+                            className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                            <Github className="w-3 h-3" />
+                            GitHub Repo Override
+                          </label>
+                          <input
+                            value={getVal("githubRepoOverride")}
+                            onChange={(e) => setDraft("githubRepoOverride", e.target.value)}
+                            placeholder={bot.githubRepo ? `Default: ${bot.githubRepo.slice(0, 36)}…` : "No default repo"}
+                            className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                            <Server className="w-3 h-3" />
+                            Pterodactyl Server UUID
+                          </label>
+                          <input
+                            value={getVal("pterodactylServerIdOverride")}
+                            onChange={(e) => setDraft("pterodactylServerIdOverride", e.target.value)}
+                            placeholder={bot.pterodactylServerId ?? "e.g. dad7fc6f"}
+                            className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                            <BookOpen className="w-3 h-3" />
+                            Internal Notes
+                          </label>
+                          <input
+                            value={getVal("notes")}
+                            onChange={(e) => setDraft("notes", e.target.value)}
+                            placeholder="e.g. Developer contacted, fix ETA Friday"
+                            className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="text-xs text-muted-foreground">
+                          {setting ? `Last saved: ${new Date(setting.updatedAt as unknown as string ?? "").toLocaleDateString()}` : "No settings saved yet"}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {hasDraft && (
+                            <button
+                              onClick={() => setBotSettingDraft((p) => { const n = { ...p }; delete n[bot.id]; return n; })}
+                              className="text-xs px-3 py-1.5 rounded-lg border border-white/8 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Reset
+                            </button>
+                          )}
+                          <button
+                            onClick={() => saveBotSetting(bot.id)}
+                            disabled={isSaving}
+                            className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-lg font-bold transition-all hover:opacity-90 disabled:opacity-60"
+                            style={{ background: "#00e599", color: "#000" }}
+                          >
+                            {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCheck className="w-3 h-3" />}
+                            Save Changes
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+
         {/* ── Deployed Bots Section ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}

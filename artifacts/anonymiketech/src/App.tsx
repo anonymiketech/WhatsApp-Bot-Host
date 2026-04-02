@@ -12,6 +12,7 @@ import BotsPage from "@/pages/bots";
 import PartnersPage from "@/pages/partners";
 import ProfilePage from "@/pages/profile";
 import PricingPage from "@/pages/pricing";
+import ContactPage from "@/pages/contact";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
@@ -34,6 +35,7 @@ function Router() {
           {/* Public routes */}
           <Route path="/" component={Landing} />
           <Route path="/pricing" component={PricingPage} />
+          <Route path="/contact" component={ContactPage} />
 
           {/* Protected routes — require login */}
           <Route path="/dashboard">
