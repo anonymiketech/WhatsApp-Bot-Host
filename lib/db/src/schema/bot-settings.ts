@@ -13,6 +13,8 @@ export const botSettingsTable = pgTable("bot_settings", {
   sessionFormat: text("session_format"),
   envTemplate: text("env_template"),
   autoSetup: boolean("auto_setup").notNull().default(false),
+  configFilePath: varchar("config_file_path").default("/home/container/.env"),
+  configFileFormat: varchar("config_file_format").default("env"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

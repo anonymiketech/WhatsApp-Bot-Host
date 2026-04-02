@@ -124,16 +124,18 @@ router.post("/bots", async (req, res) => {
       const envTemplate = botCfg?.envTemplate ?? null;
       const shouldAutoSetup = botCfg?.autoSetup ?? false;
       const repoUrl = botCfg?.githubRepoOverride ?? null;
+      const configFilePath = botCfg?.configFilePath ?? "/home/container/.env";
+      const configFileFormat = botCfg?.configFileFormat ?? "env";
 
-      logger.info({ botId: bot.id, pteroServerId, envKey, hasTemplate: !!envTemplate }, "Injecting session into server .env");
+      logger.info({ botId: bot.id, pteroServerId, envKey, configFilePath, configFileFormat, hasTemplate: !!envTemplate }, "Injecting session into server config");
 
       if (envTemplate) {
-        // Write a fully-rendered .env from the admin template, substituting {session}
+        // Write a fully-rendered config file from the admin template, substituting {session}
         const rendered = envTemplate.replace(/\{session\}/g, sessionId);
-        await pterodactyl.writeFile(pteroServerId, "/home/container/.env", rendered);
+        await pterodactyl.writeFile(pteroServerId, configFilePath, rendered);
       } else {
-        // Inject just the session key into the existing .env
-        await pterodactyl.setEnvVar(pteroServerId, envKey, sessionId);
+        // Inject the session key into the existing config file with the correct format
+        await pterodactyl.setEnvVar(pteroServerId, envKey, sessionId, configFilePath, configFileFormat);
       }
 
       // Auto-setup: start the server, git clone the repo, then restart

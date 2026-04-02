@@ -157,21 +157,45 @@ export async function readFile(serverId: string, filePath: string): Promise<stri
 }
 
 /**
- * Inject or update a key=value pair inside a remote .env file.
- * Reads the existing file first, replaces the key if found, appends if not.
+ * Render a config file string from a template + key/value pair.
+ * Supports "env" (.env format) and "commonjs" (module.exports = {...}).
  */
-export async function setEnvVar(serverId: string, key: string, value: string, filePath = "/home/container/.env"): Promise<void> {
-  let existing = "";
-  try {
-    existing = await readFile(serverId, filePath);
-  } catch {
-    // File may not exist yet — start fresh
+export function renderConfigContent(
+  existing: string,
+  key: string,
+  value: string,
+  format: "env" | "commonjs" | string,
+): string {
+  if (format === "commonjs") {
+    // Try to update existing commonjs export
+    const moduleExportRegex = /module\.exports\s*=\s*\{([\s\S]*?)\};?/;
+    const keyRegex = new RegExp(`(["']?)${key}\\1\\s*:\\s*["']([^"']*)["']`, "g");
+
+    const existing_trimmed = existing.trim();
+    if (moduleExportRegex.test(existing_trimmed)) {
+      if (keyRegex.test(existing_trimmed)) {
+        // Replace existing key value
+        return existing_trimmed.replace(
+          new RegExp(`(["']?)${key}\\1\\s*:\\s*["'][^"']*["']`),
+          `${key}: "${value}"`
+        ) + "\n";
+      } else {
+        // Append key inside the exports object
+        return existing_trimmed.replace(
+          /module\.exports\s*=\s*\{([\s\S]*?)\};?/,
+          (m, inner) => `module.exports = {${inner.trimEnd()},\n  ${key}: "${value}"\n};`
+        ) + "\n";
+      }
+    } else {
+      // Fresh commonjs config
+      return `module.exports = {\n  ${key}: "${value}"\n};\n`;
+    }
   }
 
+  // Default: .env format
   const lines = existing ? existing.split("\n") : [];
   const keyPrefix = `${key}=`;
   let found = false;
-
   const updated = lines.map((line) => {
     if (line.startsWith(keyPrefix) || line.startsWith(`${key} =`)) {
       found = true;
@@ -179,13 +203,28 @@ export async function setEnvVar(serverId: string, key: string, value: string, fi
     }
     return line;
   });
+  if (!found) updated.push(`${key}="${value}"`);
+  return updated.filter((l, i) => l.trim() !== "" || i < updated.length - 1).join("\n") + "\n";
+}
 
-  if (!found) {
-    updated.push(`${key}="${value}"`);
+/**
+ * Inject or update a single key inside a remote config file.
+ * Supports "env" (.env) and "commonjs" (module.exports = {...}) formats.
+ */
+export async function setEnvVar(
+  serverId: string,
+  key: string,
+  value: string,
+  filePath = "/home/container/.env",
+  format: "env" | "commonjs" | string = "env",
+): Promise<void> {
+  let existing = "";
+  try {
+    existing = await readFile(serverId, filePath);
+  } catch {
+    // File may not exist yet — start fresh
   }
-
-  // Remove trailing blank lines then add a final newline
-  const content = updated.filter((l, i) => l.trim() !== "" || i < updated.length - 1).join("\n") + "\n";
+  const content = renderConfigContent(existing, key, value, format);
   await writeFile(serverId, filePath, content);
 }
 

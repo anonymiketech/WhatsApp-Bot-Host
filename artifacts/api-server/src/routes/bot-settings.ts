@@ -55,6 +55,8 @@ router.put("/admin/bot-settings/:botTypeId", async (req, res) => {
     sessionFormat,
     envTemplate,
     autoSetup,
+    configFilePath,
+    configFileFormat,
   } = req.body as {
     disabled?: boolean;
     disableMessage?: string | null;
@@ -66,6 +68,8 @@ router.put("/admin/bot-settings/:botTypeId", async (req, res) => {
     sessionFormat?: string | null;
     envTemplate?: string | null;
     autoSetup?: boolean;
+    configFilePath?: string | null;
+    configFileFormat?: string | null;
   };
 
   const values: Record<string, unknown> = { botTypeId, updatedAt: new Date() };
@@ -79,6 +83,8 @@ router.put("/admin/bot-settings/:botTypeId", async (req, res) => {
   if (sessionFormat !== undefined)                values.sessionFormat = sessionFormat || null;
   if (envTemplate !== undefined)                  values.envTemplate = envTemplate || null;
   if (typeof autoSetup === "boolean")             values.autoSetup = autoSetup;
+  if (configFilePath !== undefined)               values.configFilePath = configFilePath || "/home/container/.env";
+  if (configFileFormat !== undefined)             values.configFileFormat = configFileFormat || "env";
 
   const [row] = await db
     .insert(botSettingsTable)

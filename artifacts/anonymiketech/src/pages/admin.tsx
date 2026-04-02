@@ -351,6 +351,8 @@ export default function AdminPage() {
     sessionFormat: string | null;
     envTemplate: string | null;
     autoSetup: boolean;
+    configFilePath: string | null;
+    configFileFormat: string | null;
     updatedAt?: string;
   };
   const [botSettings, setBotSettings] = useState<Record<string, BotSetting>>({});
@@ -392,6 +394,8 @@ export default function AdminPage() {
       sessionFormat: draft.sessionFormat !== undefined ? draft.sessionFormat : (existing?.sessionFormat ?? null),
       envTemplate: draft.envTemplate !== undefined ? draft.envTemplate : (existing?.envTemplate ?? null),
       autoSetup: draft.autoSetup !== undefined ? draft.autoSetup : (existing?.autoSetup ?? false),
+      configFilePath: draft.configFilePath !== undefined ? draft.configFilePath : (existing?.configFilePath ?? "/home/container/.env"),
+      configFileFormat: draft.configFileFormat !== undefined ? draft.configFileFormat : (existing?.configFileFormat ?? "env"),
     };
     try {
       const res = await fetch(`/api/admin/bot-settings/${botTypeId}`, {
@@ -1049,20 +1053,63 @@ export default function AdminPage() {
                           </div>
                         </div>
 
+                        {/* Config file format + path */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                              <FileCode className="w-3 h-3" />
+                              Config File Format
+                            </label>
+                            <select
+                              value={getVal("configFileFormat") || "env"}
+                              onChange={(e) => setDraft("configFileFormat", e.target.value)}
+                              className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-[#0a0a0a] text-xs text-foreground focus:outline-none focus:border-primary/40 transition-colors"
+                            >
+                              <option value="env">.env format (KEY="value")</option>
+                              <option value="commonjs">CommonJS (module.exports = {"{}"})</option>
+                            </select>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Use <strong>CommonJS</strong> for bots that import config via <code className="bg-white/5 px-1 rounded">require('./config')</code>
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
+                              <Terminal className="w-3 h-3" />
+                              Config File Path
+                              <span className="font-normal opacity-60">(on server)</span>
+                            </label>
+                            <input
+                              value={getVal("configFilePath") || "/home/container/.env"}
+                              onChange={(e) => setDraft("configFilePath", e.target.value)}
+                              placeholder="/home/container/.env"
+                              className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors font-mono"
+                            />
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              e.g. <code className="bg-white/5 px-1 rounded">/home/container/config.js</code> for bots that switched from .env to config.js
+                            </p>
+                          </div>
+                        </div>
+
                         <div>
                           <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
                             <FileCode className="w-3 h-3" />
-                            .env Template
+                            Config File Template
                             <span className="font-normal opacity-60">(full file, use {"{session}"} as placeholder)</span>
                           </label>
                           <textarea
                             value={getVal("envTemplate")}
                             onChange={(e) => setDraft("envTemplate", e.target.value)}
-                            rows={5}
-                            placeholder={`SESSION_ID="{session}"\nPREFIX="!"\nBOT_NAME="TRUTH"\nOWNER_NUMBER="254712345678"`}
+                            rows={6}
+                            placeholder={
+                              (getVal("configFileFormat") || "env") === "commonjs"
+                                ? `module.exports = {\n  SESSION_ID: "{session}",\n  PREFIX: "!",\n  BOT_NAME: "TRUTH"\n};`
+                                : `SESSION_ID="{session}"\nPREFIX="!"\nBOT_NAME="TRUTH"\nOWNER_NUMBER="254712345678"`
+                            }
                             className="w-full px-3 py-2.5 rounded-xl border border-white/8 bg-white/[0.03] text-xs placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors font-mono resize-y"
                           />
-                          <p className="text-[10px] text-muted-foreground mt-1">If set, the ENTIRE .env file is written from this template. The platform replaces <code className="px-1 bg-white/5 rounded">{"{session}"}</code> with the user's session key. Leave blank to only update the Session Env Key above.</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            If set, the ENTIRE config file is written from this template. The platform replaces <code className="px-1 bg-white/5 rounded">{"{session}"}</code> with the user's session key. Leave blank to only update the Session Env Key field above.
+                          </p>
                         </div>
 
                         <div className="flex items-start gap-4 p-3.5 rounded-xl border border-white/8">
