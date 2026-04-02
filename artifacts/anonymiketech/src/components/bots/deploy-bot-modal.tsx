@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Copy, Check, Loader2, Zap, BookOpen, Github, Star, GitFork, AlertTriangle } from "lucide-react";
+import {
+  ExternalLink, Copy, Check, Loader2, Zap, BookOpen, Github,
+  Star, GitFork, AlertTriangle, CheckCircle2, XCircle, ScanSearch,
+  Container, Server,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { BotDefinition } from "@/data/bots-catalog";
 
@@ -8,6 +12,57 @@ interface DeployBotModalProps {
   bot: BotDefinition | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface RepoScan {
+  compatible: boolean;
+  reason: string;
+  files: string[];
+  runtime?: string;
+}
+
+function RepoScanBadge({ scan, scanning }: { scan: RepoScan | null; scanning: boolean }) {
+  if (scanning) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-2 rounded-lg bg-secondary/40 border border-white/8">
+        <ScanSearch className="w-3.5 h-3.5 animate-pulse" />
+        Scanning repository for panel compatibility…
+      </div>
+    );
+  }
+  if (!scan) return null;
+
+  if (scan.compatible) {
+    return (
+      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-primary/8 border border-primary/20 text-xs">
+        <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold text-primary">Panel-compatible — {scan.runtime}</p>
+          <p className="text-muted-foreground mt-0.5">{scan.reason}</p>
+          {scan.files.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {scan.files.map((f) => (
+                <span key={f} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-primary/10 text-primary border border-primary/15">
+                  {f}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-yellow-500/8 border border-yellow-500/20 text-xs">
+      <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0 mt-0.5" />
+      <div>
+        <p className="font-semibold text-yellow-400">Panel deployment may not be supported</p>
+        <p className="text-muted-foreground mt-0.5">{scan.reason}</p>
+        <p className="text-muted-foreground mt-0.5">You can still deploy — your session will be managed by our platform.</p>
+      </div>
+    </div>
+  );
 }
 
 export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps) {
@@ -19,6 +74,9 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [repoScan, setRepoScan] = useState<RepoScan | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+
   if (!bot) return null;
 
   const handleCopyLink = async () => {
@@ -26,6 +84,32 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const scanRepo = async () => {
+    if (!bot.githubRepo) return;
+    setIsScanning(true);
+    setRepoScan(null);
+    try {
+      const res = await fetch(`/api/bots/check-repo?repoUrl=${encodeURIComponent(bot.githubRepo)}`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRepoScan(data);
+      }
+    } catch {
+      // silently fail — don't block deployment
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && bot.githubRepo) {
+      setRepoScan(null);
+      scanRepo();
+    }
+  }, [open, bot.githubRepo]);
 
   const handleDeploy = async () => {
     if (!sessionId.trim() || !botName.trim()) return;
@@ -130,12 +214,26 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                         {bot.badge}
                       </span>
                     )}
+                    {/* Pterodactyl badge */}
+                    {bot.pterodactylServerId && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        <Server className="w-2.5 h-2.5" />
+                        Panel Hosted
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{bot.tagline}</p>
                 </div>
               </div>
 
               <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{bot.description}</p>
+
+              {/* Repo scan result */}
+              {bot.githubRepo && (
+                <div className="mb-5">
+                  <RepoScanBadge scan={repoScan} scanning={isScanning} />
+                </div>
+              )}
 
               {/* Features */}
               <div className="flex flex-wrap gap-2 mb-5">
@@ -209,7 +307,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#ca8a04" }} />
                 <p className="text-[11px] leading-relaxed" style={{ color: "#a16207" }}>
                   <span className="font-semibold" style={{ color: "#ca8a04" }}>Note:</span>{" "}
-                  Any downtime or issues with the bot's pairing site or functionality are the responsibility of the bot's developer, not ANONYMIKETECH. Please wait patiently while the developer resolves any issues.
+                  Any downtime or issues with the bot's pairing site or functionality are the responsibility of the bot's developer, not ANONYMIKETECH.
                 </p>
               </div>
 
@@ -227,7 +325,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 <button
                   onClick={() => setStep("session")}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm text-background transition-all hover:opacity-90 hover:shadow-lg"
-                  style={{ background: bot.accent, boxShadow: `0 0 0 0 ${bot.accent}00` }}
+                  style={{ background: bot.accent }}
                 >
                   <Zap className="w-4 h-4" />
                   Deploy this Bot
@@ -254,6 +352,13 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 First, get your session key from the pairing page, then paste it below.
               </p>
 
+              {/* Panel compatibility reminder */}
+              {repoScan && (
+                <div className="mb-4">
+                  <RepoScanBadge scan={repoScan} scanning={false} />
+                </div>
+              )}
+
               {/* Step 1: Pairing link */}
               <div className="mb-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -276,7 +381,6 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 </div>
-                {/* Pairing site disclaimer */}
                 <p className="text-[10px] mt-1.5 flex items-start gap-1" style={{ color: "#71717a" }}>
                   <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "#ca8a04" }} />
                   If this link is down, it's a temporary issue on the developer's end. Please try again later.

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, notificationsTable, settingsTable } from "@workspace/db/schema";
+import { usersTable, notificationsTable, settingsTable, botsTable } from "@workspace/db/schema";
 import { eq, desc, count } from "drizzle-orm";
 import { pterodactyl } from "../services/pterodactyl";
 
@@ -37,6 +37,7 @@ router.get("/admin/status", async (req, res) => {
   const maintenance = await getMaintenanceSetting();
   const [userCountRow] = await db.select({ count: count() }).from(usersTable);
   const [notifCountRow] = await db.select({ count: count() }).from(notificationsTable);
+  const [botCountRow] = await db.select({ count: count() }).from(botsTable);
   const recentUsers = await db
     .select({
       id: usersTable.id,
@@ -53,6 +54,7 @@ router.get("/admin/status", async (req, res) => {
     maintenance,
     userCount: Number(userCountRow?.count ?? 0),
     notifCount: Number(notifCountRow?.count ?? 0),
+    botCount: Number(botCountRow?.count ?? 0),
     recentUsers,
   });
 });
@@ -93,6 +95,59 @@ router.post("/admin/notify-all", async (req, res) => {
     }))
   );
   return res.json({ success: true, sentTo: users.length });
+});
+
+// All deployed bots with user info — admin only
+router.get("/admin/bots", async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+
+  const bots = await db
+    .select({
+      id: botsTable.id,
+      name: botsTable.name,
+      status: botsTable.status,
+      botTypeId: botsTable.botTypeId,
+      pterodactylServerId: botsTable.pterodactylServerId,
+      coinsPerMonth: botsTable.coinsPerMonth,
+      expiresAt: botsTable.expiresAt,
+      createdAt: botsTable.createdAt,
+      userId: botsTable.userId,
+      userEmail: usersTable.email,
+      userFirstName: usersTable.firstName,
+      userLastName: usersTable.lastName,
+    })
+    .from(botsTable)
+    .leftJoin(usersTable, eq(botsTable.userId, usersTable.id))
+    .orderBy(desc(botsTable.createdAt));
+
+  return res.json({
+    bots: bots.map((b) => ({
+      ...b,
+      expiresAt: b.expiresAt ? b.expiresAt.toISOString() : null,
+      createdAt: b.createdAt.toISOString(),
+    })),
+    total: bots.length,
+  });
+});
+
+// Add/remove coins for a user — admin only
+router.post("/admin/users/:id/coins", async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+  const { id } = req.params;
+  const { amount } = req.body as { amount?: number };
+  if (typeof amount !== "number") return res.status(400).json({ error: "amount (number) required" });
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const newCoins = Math.max(0, user.coins + amount);
+  const [updated] = await db
+    .update(usersTable)
+    .set({ coins: newCoins })
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  return res.json({ success: true, coins: updated.coins });
 });
 
 // List Pterodactyl servers — admin only, for verifying panel connection

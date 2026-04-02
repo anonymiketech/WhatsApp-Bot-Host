@@ -4,9 +4,26 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield, Users, Bell, Power, Send, AlertTriangle, CheckCircle2,
   Megaphone, Info, XCircle, Loader2, Lock, RefreshCw, Bot,
-  Eye, EyeOff, LogOut,
+  Eye, EyeOff, LogOut, Server, Play, Square, RotateCcw,
+  Coins, Clock, Activity,
 } from "lucide-react";
 import { AdminNavbar } from "@/components/layout/admin-navbar";
+import { BOT_CATALOG } from "@/data/bots-catalog";
+
+interface AdminBot {
+  id: string;
+  name: string;
+  status: string;
+  botTypeId: string | null;
+  pterodactylServerId: string | null;
+  coinsPerMonth: number;
+  expiresAt: string | null;
+  createdAt: string;
+  userId: string;
+  userEmail: string | null;
+  userFirstName: string | null;
+  userLastName: string | null;
+}
 
 const ALLOWED_ADMIN_EMAILS = [
   "anonymiketech@gmail.com",
@@ -245,6 +262,7 @@ interface AdminStatus {
   maintenance: boolean;
   userCount: number;
   notifCount: number;
+  botCount: number;
   recentUsers: {
     id: string;
     email: string | null;
@@ -273,6 +291,29 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function BotStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; color: string; bg: string }> = {
+    running:  { label: "Running",  color: "#00e599", bg: "rgba(0,229,153,0.12)" },
+    starting: { label: "Starting", color: "#facc15", bg: "rgba(250,204,21,0.12)" },
+    stopping: { label: "Stopping", color: "#fb923c", bg: "rgba(251,146,60,0.12)" },
+    stopped:  { label: "Stopped",  color: "#71717a", bg: "rgba(113,113,122,0.12)" },
+  };
+  const s = map[status] ?? map["stopped"];
+  return (
+    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: s.color, background: s.bg }}>
+      {s.label}
+    </span>
+  );
+}
+
+function daysLeft(expiresAt: string | null): string {
+  if (!expiresAt) return "—";
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  const d = Math.ceil(diff / 86400000);
+  if (d <= 0) return "Expired";
+  return `${d}d`;
+}
+
 export default function AdminPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
   const [status, setStatus] = useState<AdminStatus | null>(null);
@@ -288,6 +329,49 @@ export default function AdminPage() {
   const [notifLink, setNotifLink] = useState("");
   const [sendingNotif, setSendingNotif] = useState(false);
   const [notifResult, setNotifResult] = useState<{ success: boolean; msg: string } | null>(null);
+
+  const [deployedBots, setDeployedBots] = useState<AdminBot[]>([]);
+  const [loadingBots, setLoadingBots] = useState(false);
+  const [botFilter, setBotFilter] = useState<"all" | "running" | "stopped">("all");
+  const [panelActionLoading, setPanelActionLoading] = useState<string | null>(null);
+  const [panelActionResult, setPanelActionResult] = useState<{ id: string; success: boolean; msg: string } | null>(null);
+
+  const fetchBots = async () => {
+    setLoadingBots(true);
+    try {
+      const res = await fetch("/api/admin/bots", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setDeployedBots(data.bots ?? []);
+      }
+    } finally {
+      setLoadingBots(false);
+    }
+  };
+
+  const handlePanelAction = async (botId: string, pterodactylServerId: string, signal: "start" | "stop" | "restart") => {
+    setPanelActionLoading(botId);
+    setPanelActionResult(null);
+    try {
+      const res = await fetch("/api/admin/pterodactyl/power", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ serverId: pterodactylServerId, signal }),
+      });
+      const data = await res.json();
+      setPanelActionResult({
+        id: botId,
+        success: res.ok,
+        msg: res.ok ? `${signal.charAt(0).toUpperCase() + signal.slice(1)} signal sent` : (data.error || "Failed"),
+      });
+      if (res.ok) fetchBots();
+    } catch {
+      setPanelActionResult({ id: botId, success: false, msg: "Network error" });
+    } finally {
+      setPanelActionLoading(null);
+    }
+  };
 
   const fetchStatus = async () => {
     setLoadingStatus(true);
@@ -307,8 +391,12 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated) fetchStatus();
-    else if (!isAuthLoading && !isAuthenticated) setLoadingStatus(false);
+    if (!isAuthLoading && isAuthenticated) {
+      fetchStatus();
+      fetchBots();
+    } else if (!isAuthLoading && !isAuthenticated) {
+      setLoadingStatus(false);
+    }
   }, [isAuthenticated, isAuthLoading]);
 
   const toggleMaintenance = async () => {
@@ -428,8 +516,8 @@ export default function AdminPage() {
         >
           {[
             { icon: Users, label: "Total Users", value: status?.userCount ?? 0, color: "#22d3ee" },
-            { icon: Bell, label: "Total Notifications", value: status?.notifCount ?? 0, color: "#a78bfa" },
-            { icon: Bot, label: "Platform", value: "LIVE", color: "#00e599" },
+            { icon: Bot, label: "Deployed Bots", value: status?.botCount ?? deployedBots.length, color: "#00e599" },
+            { icon: Bell, label: "Notifications Sent", value: status?.notifCount ?? 0, color: "#a78bfa" },
             { icon: Power, label: "Maintenance", value: maintenance ? "ON" : "OFF", color: maintenance ? "#f87171" : "#00e599" },
           ].map(({ icon: Icon, label, value, color }) => (
             <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
@@ -663,6 +751,174 @@ export default function AdminPage() {
             </div>
           </motion.div>
         )}
+        {/* ── Deployed Bots Section ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden"
+        >
+          <div className="px-5 py-4 border-b border-white/8 flex items-center gap-3 flex-wrap">
+            <Bot className="w-4 h-4 text-primary" />
+            <h2 className="font-bold text-sm">Deployed Bots</h2>
+            <span className="text-xs text-muted-foreground">{deployedBots.length} total</span>
+
+            {/* Filter pills */}
+            <div className="flex gap-1.5 ml-auto">
+              {(["all", "running", "stopped"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setBotFilter(f)}
+                  className="px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all capitalize"
+                  style={{
+                    background: botFilter === f ? "rgba(0,229,153,0.12)" : "transparent",
+                    color: botFilter === f ? "#00e599" : "#71717a",
+                    borderColor: botFilter === f ? "rgba(0,229,153,0.25)" : "rgba(255,255,255,0.08)",
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+              <button
+                onClick={fetchBots}
+                disabled={loadingBots}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-white/8 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                {loadingBots ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {loadingBots && deployedBots.length === 0 ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Loading bots…</span>
+            </div>
+          ) : deployedBots.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground text-sm">
+              No bots deployed yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5" style={{ background: "rgba(255,255,255,0.02)" }}>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-muted-foreground">Bot</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground hidden sm:table-cell">User</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground">Status</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground hidden md:table-cell">Type</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground hidden md:table-cell">Expires</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground">Panel</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deployedBots
+                    .filter((b) =>
+                      botFilter === "all" ? true :
+                      botFilter === "running" ? b.status === "running" || b.status === "starting" :
+                      b.status === "stopped" || b.status === "stopping"
+                    )
+                    .map((b) => {
+                      const catalogEntry = BOT_CATALOG.find((c) => c.id === b.botTypeId);
+                      const userName = [b.userFirstName, b.userLastName].filter(Boolean).join(" ") || b.userEmail || b.userId.slice(0, 8);
+                      const isActing = panelActionLoading === b.id;
+                      const result = panelActionResult?.id === b.id ? panelActionResult : null;
+                      return (
+                        <tr key={b.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+                          <td className="px-5 py-3">
+                            <div className="font-semibold text-xs">{b.name}</div>
+                            {catalogEntry && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1" style={{ color: catalogEntry.accent }}>
+                                {catalogEntry.name}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            <div className="text-xs text-muted-foreground truncate max-w-[160px]">{userName}</div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <BotStatusBadge status={b.status} />
+                          </td>
+                          <td className="px-4 py-3 text-center hidden md:table-cell">
+                            {catalogEntry ? (
+                              <span className="text-[11px] font-medium" style={{ color: catalogEntry.accent }}>
+                                {catalogEntry.name}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">{b.botTypeId ?? "—"}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center hidden md:table-cell">
+                            <span className={`text-xs font-medium ${!b.expiresAt || new Date(b.expiresAt) <= new Date() ? "text-destructive" : "text-foreground"}`}>
+                              {daysLeft(b.expiresAt)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {b.pterodactylServerId ? (
+                              <span className="flex items-center justify-center gap-1 text-[10px] font-bold text-primary">
+                                <Server className="w-3 h-3" />
+                                <span className="font-mono">{b.pterodactylServerId.slice(0, 8)}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {result && (
+                                <span className={`text-[10px] font-semibold mr-1 ${result.success ? "text-primary" : "text-destructive"}`}>
+                                  {result.msg}
+                                </span>
+                              )}
+                              {b.pterodactylServerId ? (
+                                <>
+                                  {b.status !== "running" && (
+                                    <button
+                                      onClick={() => handlePanelAction(b.id, b.pterodactylServerId!, "start")}
+                                      disabled={isActing}
+                                      title="Start"
+                                      className="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                                    >
+                                      {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-current" />}
+                                    </button>
+                                  )}
+                                  {b.status === "running" && (
+                                    <>
+                                      <button
+                                        onClick={() => handlePanelAction(b.id, b.pterodactylServerId!, "restart")}
+                                        disabled={isActing}
+                                        title="Restart"
+                                        className="p-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
+                                      >
+                                        {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                      </button>
+                                      <button
+                                        onClick={() => handlePanelAction(b.id, b.pterodactylServerId!, "stop")}
+                                        disabled={isActing}
+                                        title="Stop"
+                                        className="p-1.5 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                                      >
+                                        {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Square className="w-3 h-3 fill-current" />}
+                                      </button>
+                                    </>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground italic">No panel</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </motion.div>
+
       </main>
     </div>
   );

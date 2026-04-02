@@ -359,6 +359,92 @@ router.post("/bots/restart-bot", async (req, res) => {
   res.json({ bot: normalizeBotResponse(fresh!, await getLiveStatus(fresh!)) });
 });
 
+// Repo compatibility scanner — public, no auth needed
+router.get("/bots/check-repo", async (req, res) => {
+  const repoUrl = (req.query.repoUrl as string)?.trim();
+  if (!repoUrl) {
+    res.status(400).json({ error: "repoUrl query param required" });
+    return;
+  }
+
+  // Parse GitHub URL → owner/repo
+  const match = repoUrl.match(/github\.com\/([^/]+)\/([^/?\s]+)/i);
+  if (!match) {
+    res.json({ compatible: false, reason: "Not a GitHub repository URL.", files: [] });
+    return;
+  }
+
+  const [, owner, repoRaw] = match;
+  const repo = repoRaw.replace(/\.git$/, "");
+
+  // Check repo exists & is public via GitHub API
+  let defaultBranch = "main";
+  try {
+    const apiRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "AnonymikeTech-Scanner/1.0" },
+    });
+    if (!apiRes.ok) {
+      const reason = apiRes.status === 404
+        ? "Repository not found or is private."
+        : `GitHub API returned ${apiRes.status}.`;
+      res.json({ compatible: false, reason, files: [] });
+      return;
+    }
+    const apiData = await apiRes.json() as { default_branch?: string; private?: boolean };
+    if (apiData.private) {
+      res.json({ compatible: false, reason: "Repository is private — panel cannot access it.", files: [] });
+      return;
+    }
+    defaultBranch = apiData.default_branch ?? "main";
+  } catch {
+    res.json({ compatible: false, reason: "Could not reach GitHub API.", files: [] });
+    return;
+  }
+
+  // Check for key runtime/deployment files
+  const CANDIDATES = [
+    { file: "Dockerfile",         label: "Dockerfile",       weight: 3 },
+    { file: "docker-compose.yml", label: "docker-compose",   weight: 2 },
+    { file: "package.json",       label: "package.json",     weight: 2 },
+    { file: "index.js",           label: "index.js",         weight: 1 },
+    { file: "index.ts",           label: "index.ts",         weight: 1 },
+    { file: "go.mod",             label: "go.mod",           weight: 2 },
+    { file: "requirements.txt",   label: "requirements.txt", weight: 2 },
+    { file: ".env.example",       label: ".env.example",     weight: 1 },
+  ];
+
+  const found: string[] = [];
+  let score = 0;
+
+  await Promise.all(
+    CANDIDATES.map(async ({ file, label, weight }) => {
+      const url = `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file}`;
+      try {
+        const r = await fetch(url, { method: "HEAD" });
+        if (r.ok) { found.push(label); score += weight; }
+      } catch { /* ignore */ }
+    })
+  );
+
+  const hasDocker    = found.includes("Dockerfile") || found.includes("docker-compose");
+  const hasNodeJs    = found.includes("package.json");
+  const hasGo        = found.includes("go.mod");
+  const hasPython    = found.includes("requirements.txt");
+  const compatible   = score >= 2;
+
+  let runtime = "Unknown";
+  if (hasDocker)  runtime = "Docker";
+  else if (hasNodeJs) runtime = "Node.js";
+  else if (hasGo)     runtime = "Go";
+  else if (hasPython) runtime = "Python";
+
+  const reason = compatible
+    ? `${runtime} project — compatible with Pterodactyl panel deployment.`
+    : "No recognizable runtime files found. This bot may not support panel deployment.";
+
+  res.json({ compatible, reason, files: found, runtime, score, repoUrl, owner, repo });
+});
+
 // Legacy save-session (kept for backward compat)
 router.post("/bots/save-session", async (req, res) => {
   if (!req.isAuthenticated()) {
