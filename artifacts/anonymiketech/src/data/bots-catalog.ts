@@ -13,6 +13,7 @@ export interface BotDefinition {
   docsUrl: string;
   githubRepo?: string;
   category: "official" | "ai" | "group" | "media" | "advanced";
+  pterodactylServerId?: string;
 }
 
 export const BOT_CATALOG: BotDefinition[] = [
@@ -217,6 +218,7 @@ export const BOT_CATALOG: BotDefinition[] = [
     docsUrl: "https://github.com/Courtney250/TRUTH-MD",
     githubRepo: "https://github.com/Courtney250/TRUTH-MD",
     category: "ai",
+    pterodactylServerId: "dad7fc6f",
   },
 ];
 

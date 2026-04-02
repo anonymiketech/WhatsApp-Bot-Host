@@ -7,6 +7,7 @@ export const botsTable = pgTable("bots", {
   name: varchar("name").notNull(),
   sessionId: varchar("session_id").notNull(),
   botTypeId: varchar("bot_type_id"),
+  pterodactylServerId: varchar("pterodactyl_server_id"),
   coinsPerMonth: integer("coins_per_month").notNull().default(900),
   status: text("status").notNull().default("stopped"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),

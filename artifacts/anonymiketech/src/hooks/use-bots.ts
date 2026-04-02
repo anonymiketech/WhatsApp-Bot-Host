@@ -90,6 +90,29 @@ export function useStopBot() {
   });
 }
 
+export function useRestartBot() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BotResponse, ErrorEnvelope, BotActionRequest>({
+    mutationFn: async (data) => {
+      const res = await fetch("/api/bots/restart-bot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to restart bot");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bots/my-bots"] });
+    },
+  });
+}
+
 export function useRenewBot() {
   const queryClient = useQueryClient();
 

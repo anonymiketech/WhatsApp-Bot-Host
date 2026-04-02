@@ -41,6 +41,8 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
           name: botName,
           sessionId: sessionId.trim(),
           botType: bot.id,
+          coinsPerDay: bot.coinsPerDay,
+          ...(bot.pterodactylServerId ? { pterodactylServerId: bot.pterodactylServerId } : {}),
         }),
       });
 
