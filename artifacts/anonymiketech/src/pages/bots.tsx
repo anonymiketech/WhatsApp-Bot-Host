@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Bot, Zap, Coins, Search, CheckCircle2, AlertTriangle, Github, Star } from "lucide-react";
+import { Bot, Zap, Coins, Search, CheckCircle2, AlertTriangle, Github, Star, Gift } from "lucide-react";
 import { BOT_CATALOG, FEATURED_BOT, type BotDefinition } from "@/data/bots-catalog";
 import { BotCatalogCard } from "@/components/bots/bot-catalog-card";
 import { DeployBotModal } from "@/components/bots/deploy-bot-modal";
@@ -61,15 +61,22 @@ export default function BotsPage() {
         <div className="absolute top-0 right-0 w-[600px] h-[400px] bg-primary/4 blur-[120px] rounded-full" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-14 relative z-10">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary mb-4">
-              <Bot className="w-3.5 h-3.5" />
-              {BOT_CATALOG.length} bots available
+            <div className="flex flex-wrap gap-2 mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary">
+                <Bot className="w-3.5 h-3.5" />
+                {BOT_CATALOG.length} bots available
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold"
+                style={{ background: "linear-gradient(90deg, rgba(0,229,153,0.12), rgba(167,139,250,0.12))", borderColor: "rgba(0,229,153,0.3)", color: "#00e599" }}>
+                <Gift className="w-3.5 h-3.5" />
+                First Bot FREE for new users!
+              </div>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-black mb-2 sm:mb-3">
               Bot <span className="tech-gradient-text">Marketplace</span>
             </h1>
             <p className="text-muted-foreground text-base sm:text-lg max-w-xl">
-              Pick a bot, pair your WhatsApp, and deploy in under 2 minutes.
+              Pick a bot, pair your WhatsApp, and deploy in under 2 minutes. New users get their first bot absolutely free!
             </p>
           </motion.div>
         </div>

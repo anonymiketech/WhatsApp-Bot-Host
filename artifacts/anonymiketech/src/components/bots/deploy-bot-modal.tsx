@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   ExternalLink, Copy, Check, Loader2, Zap, BookOpen, Github,
   Star, GitFork, AlertTriangle, CheckCircle2, XCircle, ScanSearch,
-  Container, Server,
+  Container, Server, Sparkles, Gift,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { BotDefinition } from "@/data/bots-catalog";
@@ -73,10 +73,32 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
   const [deployed, setDeployed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [repoScan, setRepoScan] = useState<RepoScan | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isFirstBot, setIsFirstBot] = useState(false);
 
+  // NOTE: All hooks MUST be before any early return
+  useEffect(() => {
+    if (!open || !bot?.githubRepo) return;
+    setRepoScan(null);
+    setIsScanning(true);
+    fetch(`/api/bots/check-repo?repoUrl=${encodeURIComponent(bot.githubRepo)}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setRepoScan(data))
+      .catch(() => {})
+      .finally(() => setIsScanning(false));
+  }, [open, bot?.githubRepo]);
+
+  useEffect(() => {
+    if (!open) return;
+    // Check if this would be the user's first bot (free offer)
+    fetch("/api/bots/my-bots", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setIsFirstBot((data?.bots?.length ?? 1) === 0))
+      .catch(() => setIsFirstBot(false));
+  }, [open]);
+
+  // Early return AFTER all hooks
   if (!bot) return null;
 
   const handleCopyLink = async () => {
@@ -84,32 +106,6 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const scanRepo = async () => {
-    if (!bot.githubRepo) return;
-    setIsScanning(true);
-    setRepoScan(null);
-    try {
-      const res = await fetch(`/api/bots/check-repo?repoUrl=${encodeURIComponent(bot.githubRepo)}`, {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRepoScan(data);
-      }
-    } catch {
-      // silently fail — don't block deployment
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  useEffect(() => {
-    if (open && bot.githubRepo) {
-      setRepoScan(null);
-      scanRepo();
-    }
-  }, [open, bot.githubRepo]);
 
   const handleDeploy = async () => {
     if (!sessionId.trim() || !botName.trim()) return;
@@ -159,13 +155,16 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
     onOpenChange(v);
   };
 
+  const monthlyCost = bot.coinsPerDay * 30;
+  const effectiveCost = isFirstBot ? 0 : monthlyCost;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[490px] p-0 overflow-hidden border border-white/10 bg-background shadow-2xl max-h-[92vh] flex flex-col">
         <DialogTitle className="sr-only">Deploy {bot.name}</DialogTitle>
 
         {/* Top accent bar */}
-        <div className="h-0.5 w-full" style={{ background: `linear-gradient(90deg, ${bot.accent}80, ${bot.accent}, ${bot.accent}80)` }} />
+        <div className="h-0.5 w-full" style={{ background: isFirstBot ? "linear-gradient(90deg, #00e59980, #00e599, #a78bfa)" : `linear-gradient(90deg, ${bot.accent}80, ${bot.accent}, ${bot.accent}80)` }} />
 
         <div className="overflow-y-auto flex-1">
         <AnimatePresence mode="wait">
@@ -195,6 +194,25 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
               exit={{ opacity: 0, x: -10 }}
               className="px-7 py-6"
             >
+              {/* FREE first bot banner */}
+              {isFirstBot && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl mb-5 border border-primary/25"
+                  style={{ background: "linear-gradient(135deg, rgba(0,229,153,0.1), rgba(167,139,250,0.08))" }}
+                >
+                  <Gift className="w-5 h-5 flex-shrink-0" style={{ color: "#00e599" }} />
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: "#00e599" }}>Your first bot is FREE! 🎉</p>
+                    <p className="text-xs" style={{ color: "#a1a1aa" }}>No coins deducted for your first deployment. Enjoy!</p>
+                  </div>
+                  <span className="ml-auto text-xs font-black px-2 py-1 rounded-lg border border-primary/30" style={{ color: "#00e599", background: "rgba(0,229,153,0.1)" }}>
+                    FREE
+                  </span>
+                </motion.div>
+              )}
+
               {/* Bot header */}
               <div className="flex items-start gap-4 mb-5">
                 <div
@@ -214,7 +232,6 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                         {bot.badge}
                       </span>
                     )}
-                    {/* Pterodactyl badge */}
                     {bot.pterodactylServerId && (
                       <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                         <Server className="w-2.5 h-2.5" />
@@ -253,13 +270,22 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 <div className="flex items-center justify-between p-3.5">
                   <span className="text-sm text-muted-foreground">Monthly subscription</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-lg font-bold" style={{ color: bot.accent }}>{bot.coinsPerDay * 30}</span>
-                    <span className="text-sm text-muted-foreground font-medium">coins / 30 days</span>
+                    {isFirstBot ? (
+                      <>
+                        <span className="text-lg font-bold line-through opacity-40">{monthlyCost}</span>
+                        <span className="text-lg font-black" style={{ color: "#00e599" }}>FREE</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg font-bold" style={{ color: bot.accent }}>{monthlyCost}</span>
+                        <span className="text-sm text-muted-foreground font-medium">coins / 30 days</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-between px-3.5 pb-3 text-xs text-muted-foreground border-t border-white/5 pt-2.5">
                   <span>Renews every 30 days from your deploy date</span>
-                  <span>{bot.coinsPerDay} coins/day</span>
+                  <span>{isFirstBot ? "First bot free!" : `${bot.coinsPerDay} coins/day`}</span>
                 </div>
               </div>
 
@@ -325,10 +351,10 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 <button
                   onClick={() => setStep("session")}
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm text-background transition-all hover:opacity-90 hover:shadow-lg"
-                  style={{ background: bot.accent }}
+                  style={{ background: isFirstBot ? "#00e599" : bot.accent }}
                 >
-                  <Zap className="w-4 h-4" />
-                  Deploy this Bot
+                  {isFirstBot ? <Gift className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                  {isFirstBot ? "Claim Your Free Bot" : "Deploy this Bot"}
                 </button>
               </div>
             </motion.div>
@@ -347,7 +373,15 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 ← Back to bot info
               </button>
 
-              <h3 className="text-lg font-bold mb-1">Pair & Deploy</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-lg font-bold">Pair & Deploy</h3>
+                {isFirstBot && (
+                  <span className="text-xs font-black px-2.5 py-1 rounded-full border border-primary/30 flex items-center gap-1.5" style={{ color: "#00e599", background: "rgba(0,229,153,0.1)" }}>
+                    <Gift className="w-3 h-3" />
+                    FREE
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground mb-5">
                 First, get your session key from the pairing page, then paste it below.
               </p>
@@ -425,11 +459,17 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                 onClick={handleDeploy}
                 disabled={isDeploying || !sessionId.trim() || !botName.trim()}
                 className="w-full py-3 rounded-lg font-bold text-sm text-background transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ background: bot.accent }}
+                style={{ background: isFirstBot ? "#00e599" : bot.accent }}
               >
-                {isDeploying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                {isDeploying ? "Deploying..." : "Launch Bot Instance"}
+                {isDeploying ? <Loader2 className="w-4 h-4 animate-spin" /> : isFirstBot ? <Gift className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                {isDeploying ? "Deploying..." : isFirstBot ? "Launch Free Bot Instance" : "Launch Bot Instance"}
               </button>
+
+              {isFirstBot && (
+                <p className="text-center text-xs mt-2" style={{ color: "#71717a" }}>
+                  No coins will be deducted for this deployment 🎉
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

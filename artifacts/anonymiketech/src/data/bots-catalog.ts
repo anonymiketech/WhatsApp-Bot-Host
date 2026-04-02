@@ -36,9 +36,11 @@ export const BOT_CATALOG: BotDefinition[] = [
       "Multi-device support",
       "24/7 always-on uptime",
     ],
-    sessionLink: "https://session.anonymiketech.online/truth",
-    docsUrl: "https://docs.anonymiketech.online/truth",
+    sessionLink: "https://truth-md.courtneytech.xyz/",
+    docsUrl: "https://github.com/Courtney250/TRUTH-MD",
+    githubRepo: "https://github.com/Courtney250/TRUTH-MD",
     category: "official",
+    pterodactylServerId: "dad7fc6f",
   },
   {
     id: "king-md",

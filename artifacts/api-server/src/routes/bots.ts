@@ -76,14 +76,21 @@ router.post("/bots", async (req, res) => {
     return;
   }
 
-  if (user.coins < coinsPerMonth) {
+  // Check if this is the user's very first bot (free offer)
+  const existingBots = await db.select({ id: botsTable.id }).from(botsTable).where(eq(botsTable.userId, userId));
+  const isFirstBot = existingBots.length === 0;
+
+  if (!isFirstBot && user.coins < coinsPerMonth) {
     res.status(400).json({
       error: `Insufficient coins. You need ${coinsPerMonth} coins for a 30-day subscription.`,
     });
     return;
   }
 
-  await db.update(usersTable).set({ coins: user.coins - coinsPerMonth }).where(eq(usersTable.id, userId));
+  // Charge coins only if not the first bot
+  if (!isFirstBot) {
+    await db.update(usersTable).set({ coins: user.coins - coinsPerMonth }).where(eq(usersTable.id, userId));
+  }
 
   const expiresAt = new Date(Date.now() + THIRTY_DAYS_MS);
   const pteroServerId = pterodactylServerId ?? null;
@@ -120,7 +127,9 @@ router.post("/bots", async (req, res) => {
     userId,
     "success",
     `Bot "${name}" is now live 🚀`,
-    `Your WhatsApp bot has been deployed successfully. Subscription active for 30 days (${coinsPerMonth} coins charged).`,
+    isFirstBot
+      ? `Your first bot has been deployed for FREE! Subscription active for 30 days. Enjoy your free trial!`
+      : `Your WhatsApp bot has been deployed successfully. Subscription active for 30 days (${coinsPerMonth} coins charged).`,
     "/dashboard"
   );
 
