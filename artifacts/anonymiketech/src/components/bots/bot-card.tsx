@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useStartBot, useStopBot, useRestartBot, useRenewBot, useDeleteBot } from "@/hooks/use-bots";
 import {
   Play, Square, RotateCcw, Loader2, Clock, Coins, Cpu,
   AlertTriangle, RefreshCw, CheckCircle2, Server, Trash2, X,
+  Terminal, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -118,6 +119,155 @@ function DeleteConfirmDialog({
   );
 }
 
+interface ActivityEvent {
+  id: string;
+  event: string;
+  is_api: boolean;
+  description: string | null;
+  timestamp: string;
+}
+
+function formatEvent(event: string): string {
+  const map: Record<string, string> = {
+    "server:power.start":   "▶ Server started",
+    "server:power.stop":    "■ Server stopped",
+    "server:power.restart": "↻ Server restarted",
+    "server:power.kill":    "✕ Server killed",
+    "server:file.write":    "✎ File written",
+    "server:file.read":     "↓ File read",
+    "server:command":       "$ Command sent",
+    "server:sftp.download": "↓ SFTP download",
+    "server:sftp.upload":   "↑ SFTP upload",
+  };
+  return map[event] ?? event;
+}
+
+function BotLogsModal({
+  bot,
+  onClose,
+}: {
+  bot: Bot;
+  onClose: () => void;
+}) {
+  const [logs, setLogs] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/bots/${bot.id}/logs`, { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to load logs");
+      setLogs(data.logs ?? []);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, [bot.id]);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.18 }}
+      className="absolute inset-0 z-20 rounded-2xl flex flex-col"
+      style={{ background: "rgba(8,8,8,0.98)", backdropFilter: "blur(10px)" }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+        <div className="flex items-center gap-2">
+          <Terminal className="w-4 h-4 text-primary" />
+          <span className="text-sm font-bold">Activity Logs</span>
+          <span className="text-xs text-muted-foreground">— {bot.name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchLogs}
+            title="Refresh"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/8 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/8 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Log list */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-1 font-mono text-xs">
+        {loading && (
+          <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Loading logs…</span>
+          </div>
+        )}
+        {!loading && error && (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-destructive text-center">
+            <AlertTriangle className="w-5 h-5" />
+            <p>{error}</p>
+          </div>
+        )}
+        {!loading && !error && logs.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground text-center">
+            <Terminal className="w-5 h-5" />
+            <p>No activity recorded yet.</p>
+          </div>
+        )}
+        {!loading && !error && logs.map((log) => (
+          <div key={log.id} className="flex items-start gap-2 py-1 border-b border-white/4">
+            <span className="text-muted-foreground/60 whitespace-nowrap flex-shrink-0 text-[10px] mt-0.5">
+              {new Date(log.timestamp).toLocaleTimeString("en-KE", {
+                hour: "2-digit", minute: "2-digit", second: "2-digit",
+              })}
+            </span>
+            <span className={cn(
+              "flex-1 leading-relaxed",
+              log.event.includes("stop") || log.event.includes("kill")
+                ? "text-red-400"
+                : log.event.includes("start") || log.event.includes("restart")
+                ? "text-primary"
+                : "text-muted-foreground",
+            )}>
+              {formatEvent(log.event)}
+              {log.description && (
+                <span className="text-muted-foreground/60 ml-1">— {log.description}</span>
+              )}
+              {log.is_api && (
+                <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] bg-primary/10 text-primary/70">API</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer — open in panel */}
+      {bot.panelUrl && (
+        <div className="px-4 py-3 border-t border-white/8">
+          <a
+            href={bot.panelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-muted-foreground bg-secondary/60 border border-white/8 hover:text-foreground hover:border-white/15 transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Open full console in Panel
+          </a>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export function BotCard({ bot }: BotCardProps) {
   const { mutate: startBot, isPending: isStarting } = useStartBot();
   const { mutate: stopBot,  isPending: isStopping  } = useStopBot();
@@ -128,6 +278,7 @@ export function BotCard({ bot }: BotCardProps) {
   const [renewSuccess, setRenewSuccess] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
 
   const isRunning = bot.status === "running";
   const isTransitioning = bot.status === "starting" || bot.status === "stopping";
@@ -189,6 +340,13 @@ export function BotCard({ bot }: BotCardProps) {
         )}
       </AnimatePresence>
 
+      {/* Logs overlay */}
+      <AnimatePresence>
+        {showLogs && (
+          <BotLogsModal bot={bot} onClose={() => setShowLogs(false)} />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
@@ -213,13 +371,36 @@ export function BotCard({ bot }: BotCardProps) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Pterodactyl badge */}
+          {/* Logs button */}
           {hasPtero && (
+            <button
+              onClick={() => setShowLogs(true)}
+              title="View activity logs"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5 text-muted-foreground hover:text-foreground hover:border-white/15 transition-colors"
+            >
+              <Terminal className="w-3 h-3" />
+              <span className="text-[10px] font-medium">Logs</span>
+            </button>
+          )}
+          {/* Pterodactyl panel link */}
+          {bot.panelUrl ? (
+            <a
+              href={bot.panelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open server in Pterodactyl panel"
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5 text-muted-foreground hover:text-foreground hover:border-white/15 transition-colors"
+            >
+              <Server className="w-3 h-3" />
+              <span className="text-[10px] font-medium">Panel</span>
+              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+            </a>
+          ) : hasPtero ? (
             <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5">
               <Server className="w-3 h-3 text-muted-foreground" />
               <span className="text-[10px] text-muted-foreground font-medium">Panel</span>
             </div>
-          )}
+          ) : null}
           {/* Delete button */}
           <button
             onClick={() => setShowDeleteConfirm(true)}

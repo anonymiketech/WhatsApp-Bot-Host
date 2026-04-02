@@ -17,16 +17,20 @@ function mapPteroStatus(s: PteroStatus | null): string {
   return s; // "running" | "stopped" | "starting" | "stopping"
 }
 
+const PTERO_BASE = process.env.PTERODACTYL_URL?.replace(/\/$/, "") ?? "";
+
 function normalizeBotResponse(
   bot: typeof botsTable.$inferSelect,
   liveStatus?: string,
 ) {
+  const pteroId = bot.pterodactylServerId ?? null;
   return {
     id: bot.id,
     name: bot.name,
     status: liveStatus ?? bot.status,
     botTypeId: bot.botTypeId ?? null,
-    pterodactylServerId: bot.pterodactylServerId ?? null,
+    pterodactylServerId: pteroId,
+    panelUrl: pteroId && PTERO_BASE ? `${PTERO_BASE}/server/${pteroId}` : null,
     coinsPerMonth: bot.coinsPerMonth,
     expiresAt: bot.expiresAt ? bot.expiresAt.toISOString() : null,
     createdAt: bot.createdAt.toISOString(),
@@ -494,6 +498,40 @@ router.get("/bots/check-repo", async (req, res) => {
     : "No recognizable runtime files found. This bot may not support panel deployment.";
 
   res.json({ compatible, reason, files: found, runtime, score, repoUrl, owner, repo });
+});
+
+// Get recent activity logs for a bot from Pterodactyl
+router.get("/bots/:botId/logs", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const { botId } = req.params;
+  const userId = req.user!.id;
+
+  const [bot] = await db
+    .select()
+    .from(botsTable)
+    .where(and(eq(botsTable.id, botId), eq(botsTable.userId, userId)));
+
+  if (!bot) {
+    res.status(404).json({ error: "Bot not found" });
+    return;
+  }
+
+  if (!bot.pterodactylServerId || !pterodactyl.isConfigured()) {
+    res.json({ logs: [], message: "No panel integration" });
+    return;
+  }
+
+  try {
+    const activity = await pterodactyl.getServerActivity(bot.pterodactylServerId);
+    res.json({ logs: activity });
+  } catch (err) {
+    logger.warn({ err, botId }, "Failed to fetch bot activity logs");
+    res.status(502).json({ error: "Could not fetch logs from panel. Try again." });
+  }
 });
 
 // Delete a bot — stops it on Pterodactyl and removes from DB

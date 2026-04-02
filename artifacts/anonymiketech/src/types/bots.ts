@@ -4,6 +4,7 @@ export interface Bot {
   status: string;
   botTypeId: string | null;
   pterodactylServerId: string | null;
+  panelUrl: string | null;
   coinsPerMonth: number;
   expiresAt: string | null;
   createdAt: string;

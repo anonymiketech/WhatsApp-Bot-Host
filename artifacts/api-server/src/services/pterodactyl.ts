@@ -3,15 +3,21 @@ import { logger } from "../lib/logger";
 const BASE = process.env.PTERODACTYL_URL?.replace(/\/$/, "");
 const KEY  = process.env.PTERODACTYL_API_KEY;
 
-// Supports both Application API (ptla_) and Client API (ptlc_)
-// Application API  → /api/application  — uses server internal UUID for power actions
-// Client API       → /api/client       — uses short identifier
+// Application API  → /api/application  — for listing/admin operations (ptla_ keys)
+// Client API       → /api/client       — for power, console, files (ptlc_ or ptla_ keys)
+// NOTE: Power signals, resources, and file ops ALWAYS use the Client API regardless of key type.
+// The Application API has no power/console endpoints.
+
 function isAppKey() {
   return KEY?.startsWith("ptla_") ?? false;
 }
 
-function apiBase() {
-  return isAppKey() ? `${BASE}/api/application` : `${BASE}/api/client`;
+function appBase() {
+  return `${BASE}/api/application`;
+}
+
+function clientBase() {
+  return `${BASE}/api/client`;
 }
 
 function headers() {
@@ -22,7 +28,7 @@ function headers() {
   };
 }
 
-async function apiRequest(
+async function clientRequest(
   method: "GET" | "POST",
   path: string,
   body?: Record<string, unknown>,
@@ -31,7 +37,37 @@ async function apiRequest(
     throw new Error("Pterodactyl not configured (PTERODACTYL_URL / PTERODACTYL_API_KEY missing)");
   }
 
-  const url = `${apiBase()}${path}`;
+  const url = `${clientBase()}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers: headers(),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 204) return null;
+
+  const text = await res.text();
+  let json: unknown;
+  try { json = JSON.parse(text); } catch { json = null; }
+
+  if (!res.ok) {
+    const msg = (json as { errors?: { detail?: string }[] })?.errors?.[0]?.detail ?? text;
+    throw new Error(`Pterodactyl ${method} ${path} → ${res.status}: ${msg}`);
+  }
+
+  return json;
+}
+
+async function appRequest(
+  method: "GET" | "POST",
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<unknown> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured (PTERODACTYL_URL / PTERODACTYL_API_KEY missing)");
+  }
+
+  const url = `${appBase()}${path}`;
   const res = await fetch(url, {
     method,
     headers: headers(),
@@ -67,43 +103,38 @@ interface ResourcesResponse {
 
 /**
  * Get server power status.
- * App API: GET /api/application/servers/{uuid}/resources  (uuid = internal UUID)
- * Client API: GET /api/client/servers/{id}/resources       (id = short identifier)
+ * Always uses Client API: GET /api/client/servers/{id}/resources
  */
 export async function getServerStatus(serverId: string): Promise<PteroStatus> {
-  const path = isAppKey()
-    ? `/servers/${serverId}/resources`
-    : `/servers/${serverId}/resources`;
-
-  const data = await apiRequest("GET", path) as ResourcesResponse;
+  const data = await clientRequest("GET", `/servers/${serverId}/resources`) as ResourcesResponse;
   return data.attributes.current_state;
 }
 
 /**
  * Send a power signal to a server.
- * App API: POST /api/application/servers/{uuid}/power
- * Client API: POST /api/client/servers/{id}/power
+ * Always uses Client API: POST /api/client/servers/{id}/power
+ * (Application API has no power endpoint)
  */
 export async function sendPowerSignal(
   serverId: string,
   signal: "start" | "stop" | "restart" | "kill",
 ): Promise<void> {
-  await apiRequest("POST", `/servers/${serverId}/power`, { signal });
+  await clientRequest("POST", `/servers/${serverId}/power`, { signal });
 }
 
 /**
  * List all servers accessible with the current key.
- * App API: GET /api/application/servers
- * Client API: GET /api/client
+ * Application API: GET /api/application/servers  (ptla_ keys)
+ * Client API:      GET /api/client               (ptlc_ keys)
  */
 export async function listServers(): Promise<{ identifier: string; name: string; uuid: string }[]> {
   if (isAppKey()) {
-    const data = await apiRequest("GET", "/servers") as {
+    const data = await appRequest("GET", "/servers") as {
       data: { attributes: { identifier: string; name: string; uuid: string } }[];
     };
     return (data?.data ?? []).map((s) => s.attributes);
   } else {
-    const data = await apiRequest("GET", "/") as {
+    const data = await clientRequest("GET", "/") as {
       data: { attributes: { identifier: string; name: string; uuid: string } }[];
     };
     return (data?.data ?? []).map((s) => s.attributes);
@@ -234,7 +265,7 @@ export async function setEnvVar(
  * The server must be running for this to work.
  */
 export async function sendCommand(serverId: string, command: string): Promise<void> {
-  await apiRequest("POST", `/servers/${serverId}/command`, { command });
+  await clientRequest("POST", `/servers/${serverId}/command`, { command });
 }
 
 /**
@@ -251,6 +282,36 @@ export async function autoSetupRepo(serverId: string, repoUrl: string): Promise<
   await sendCommand(serverId, "npm install --omit=dev 2>&1 || npm install 2>&1");
 }
 
+export interface ActivityEvent {
+  id: string;
+  batch: string;
+  event: string;
+  is_api: boolean;
+  ip: string | null;
+  description: string | null;
+  timestamp: string;
+}
+
+/**
+ * Fetch recent activity log events for a server.
+ * Client API: GET /api/client/servers/{id}/activity
+ */
+export async function getServerActivity(serverId: string): Promise<ActivityEvent[]> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured");
+  }
+  const url = `${clientBase()}/servers/${serverId}/activity`;
+  const res = await fetch(url, { method: "GET", headers: headers() });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Pterodactyl activity ${res.status}: ${text}`);
+  }
+  const json = await res.json() as {
+    data: { attributes: ActivityEvent }[];
+  };
+  return (json?.data ?? []).map((d) => d.attributes);
+}
+
 export const pterodactyl = {
   getServerStatus,
   sendPowerSignal,
@@ -260,6 +321,7 @@ export const pterodactyl = {
   setEnvVar,
   sendCommand,
   autoSetupRepo,
+  getServerActivity,
   isConfigured: () => Boolean(BASE && KEY),
   isAppKey,
 };
