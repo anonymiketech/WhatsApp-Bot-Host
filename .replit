@@ -32,3 +32,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ADMIN_EMAILS = "admin@anonymiketech.online,anonymiketech@gmail.com"
+PTERODACTYL_API_KEY = "ptla_HlWH8bEhddk466QnGeioFAaZSWXEY9bJz0e5RL3zHAB"
