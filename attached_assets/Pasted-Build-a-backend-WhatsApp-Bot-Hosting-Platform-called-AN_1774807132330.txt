@@ -1,0 +1,155 @@
+Build a backend WhatsApp Bot Hosting Platform called ANONYMIKETECH.
+
+IMPORTANT:
+- Use Replit Authentication (built-in auth)
+- Do NOT build custom login/signup
+- Use Replit user identity and store users in MongoDB
+
+-----------------------------------
+
+STACK:
+- Node.js + Express
+- MongoDB (mongoose)
+- Baileys (WhatsApp bot)
+
+-----------------------------------
+
+CORE FLOW:
+
+1. User logs in using Replit Auth
+2. Backend reads user identity (req.user or headers)
+3. If user does not exist in DB:
+   → Create user with default coins = 100
+4. User pairs WhatsApp externally:
+   https://truth-md.courtneytech.xyz/
+5. User gets sessionId (string)
+6. User saves session
+7. User starts/stops bot
+
+-----------------------------------
+
+MODELS:
+
+User:
+- replitId (string, unique)
+- coins (number, default 100)
+
+Bot:
+- userId (replitId)
+- name
+- sessionId (string)
+- status (running / stopped)
+- expiresAt (date)
+
+-----------------------------------
+
+MIDDLEWARE:
+
+Create middleware:
+requireAuth
+
+- Read Replit user ID from request
+- Example sources:
+  req.user
+  or headers like x-replit-user-id
+
+- If not found → reject request
+
+- Find user in MongoDB:
+  if not found → create new user
+
+- Attach user to request:
+  req.dbUser
+
+-----------------------------------
+
+API ROUTES:
+
+GET /
+- Return "API is running"
+
+POST /save-session
+- Input: name, sessionId
+- Save bot for logged-in user
+
+GET /my-bots
+- Return all bots for current user
+
+POST /start-bot
+- Input: botId
+- Check coins >= 50
+- Deduct coins
+- Start bot using sessionId
+- expiresAt = now + 24 hours
+- status = running
+
+POST /stop-bot
+- Stop bot
+- status = stopped
+
+POST /add-coins
+- Add coins (for testing)
+
+-----------------------------------
+
+BOT ENGINE:
+
+- Use Baileys
+- Maintain:
+  const runningBots = {}
+
+- When starting:
+  runningBots[botId] = bot instance
+
+- When stopping:
+  close connection and delete it
+
+-----------------------------------
+
+AUTO STOP SYSTEM:
+
+- Every 60 seconds:
+  Find bots where:
+    status = running
+    expiresAt < current time
+
+- Stop them automatically
+- Update status = stopped
+
+-----------------------------------
+
+IMPORTANT RULES:
+
+- sessionId is a STRING
+- Do NOT expose sessionId after saving
+- Support multiple bots running at once
+- Keep code modular:
+  /models
+  /routes
+  /services
+  /middleware
+
+-----------------------------------
+
+ENV VARIABLES:
+
+- MONGO_URI
+- PORT
+
+-----------------------------------
+
+RUNNING:
+
+Ensure app runs with:
+npm install
+node server.js
+
+-----------------------------------
+
+GOAL:
+
+A working backend where:
+- Users are handled via Replit auth
+- Bots can be saved, started, stopped
+- Coins control usage
+- Multiple users and bots supported

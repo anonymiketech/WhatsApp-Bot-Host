@@ -1,0 +1,327 @@
+import { logger } from "../lib/logger";
+
+const BASE = process.env.PTERODACTYL_URL?.replace(/\/$/, "");
+const KEY  = process.env.PTERODACTYL_API_KEY;
+
+// Application API  → /api/application  — for listing/admin operations (ptla_ keys)
+// Client API       → /api/client       — for power, console, files (ptlc_ or ptla_ keys)
+// NOTE: Power signals, resources, and file ops ALWAYS use the Client API regardless of key type.
+// The Application API has no power/console endpoints.
+
+function isAppKey() {
+  return KEY?.startsWith("ptla_") ?? false;
+}
+
+function appBase() {
+  return `${BASE}/api/application`;
+}
+
+function clientBase() {
+  return `${BASE}/api/client`;
+}
+
+function headers() {
+  return {
+    "Authorization": `Bearer ${KEY}`,
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+  };
+}
+
+async function clientRequest(
+  method: "GET" | "POST",
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<unknown> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured (PTERODACTYL_URL / PTERODACTYL_API_KEY missing)");
+  }
+
+  const url = `${clientBase()}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers: headers(),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 204) return null;
+
+  const text = await res.text();
+  let json: unknown;
+  try { json = JSON.parse(text); } catch { json = null; }
+
+  if (!res.ok) {
+    const msg = (json as { errors?: { detail?: string }[] })?.errors?.[0]?.detail ?? text;
+    throw new Error(`Pterodactyl ${method} ${path} → ${res.status}: ${msg}`);
+  }
+
+  return json;
+}
+
+async function appRequest(
+  method: "GET" | "POST",
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<unknown> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured (PTERODACTYL_URL / PTERODACTYL_API_KEY missing)");
+  }
+
+  const url = `${appBase()}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers: headers(),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 204) return null;
+
+  const text = await res.text();
+  let json: unknown;
+  try { json = JSON.parse(text); } catch { json = null; }
+
+  if (!res.ok) {
+    const msg = (json as { errors?: { detail?: string }[] })?.errors?.[0]?.detail ?? text;
+    throw new Error(`Pterodactyl ${method} ${path} → ${res.status}: ${msg}`);
+  }
+
+  return json;
+}
+
+export type PteroStatus = "running" | "stopped" | "starting" | "stopping";
+
+interface ResourcesResponse {
+  attributes: {
+    current_state: PteroStatus;
+    resources: {
+      cpu_absolute: number;
+      memory_bytes: number;
+      uptime: number;
+    };
+  };
+}
+
+/**
+ * Get server power status.
+ * Always uses Client API: GET /api/client/servers/{id}/resources
+ */
+export async function getServerStatus(serverId: string): Promise<PteroStatus> {
+  const data = await clientRequest("GET", `/servers/${serverId}/resources`) as ResourcesResponse;
+  return data.attributes.current_state;
+}
+
+/**
+ * Send a power signal to a server.
+ * Always uses Client API: POST /api/client/servers/{id}/power
+ * (Application API has no power endpoint)
+ */
+export async function sendPowerSignal(
+  serverId: string,
+  signal: "start" | "stop" | "restart" | "kill",
+): Promise<void> {
+  await clientRequest("POST", `/servers/${serverId}/power`, { signal });
+}
+
+/**
+ * List all servers accessible with the current key.
+ * Application API: GET /api/application/servers  (ptla_ keys)
+ * Client API:      GET /api/client               (ptlc_ keys)
+ */
+export async function listServers(): Promise<{ identifier: string; name: string; uuid: string }[]> {
+  if (isAppKey()) {
+    const data = await appRequest("GET", "/servers") as {
+      data: { attributes: { identifier: string; name: string; uuid: string } }[];
+    };
+    return (data?.data ?? []).map((s) => s.attributes);
+  } else {
+    const data = await clientRequest("GET", "/") as {
+      data: { attributes: { identifier: string; name: string; uuid: string } }[];
+    };
+    return (data?.data ?? []).map((s) => s.attributes);
+  }
+}
+
+/**
+ * Write raw content to a file on the server.
+ * Client API: POST /api/client/servers/{id}/files/write?file={path}
+ * Body is raw text (Content-Type: text/plain).
+ */
+export async function writeFile(serverId: string, filePath: string, content: string): Promise<void> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured (PTERODACTYL_URL / PTERODACTYL_API_KEY missing)");
+  }
+  const url = `${BASE}/api/client/servers/${serverId}/files/write?file=${encodeURIComponent(filePath)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${KEY}`,
+      "Content-Type": "text/plain",
+    },
+    body: content,
+  });
+  if (res.status === 204 || res.ok) return;
+  const text = await res.text();
+  throw new Error(`Pterodactyl writeFile ${filePath} → ${res.status}: ${text}`);
+}
+
+/**
+ * Read file contents from the server.
+ * Client API: GET /api/client/servers/{id}/files/contents?file={path}
+ */
+export async function readFile(serverId: string, filePath: string): Promise<string> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured");
+  }
+  const url = `${BASE}/api/client/servers/${serverId}/files/contents?file=${encodeURIComponent(filePath)}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${KEY}`,
+      "Accept": "text/plain",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Pterodactyl readFile ${filePath} → ${res.status}: ${text}`);
+  }
+  return res.text();
+}
+
+/**
+ * Render a config file string from a template + key/value pair.
+ * Supports "env" (.env format) and "commonjs" (module.exports = {...}).
+ */
+export function renderConfigContent(
+  existing: string,
+  key: string,
+  value: string,
+  format: "env" | "commonjs" | string,
+): string {
+  if (format === "commonjs") {
+    // Try to update existing commonjs export
+    const moduleExportRegex = /module\.exports\s*=\s*\{([\s\S]*?)\};?/;
+    const keyRegex = new RegExp(`(["']?)${key}\\1\\s*:\\s*["']([^"']*)["']`, "g");
+
+    const existing_trimmed = existing.trim();
+    if (moduleExportRegex.test(existing_trimmed)) {
+      if (keyRegex.test(existing_trimmed)) {
+        // Replace existing key value
+        return existing_trimmed.replace(
+          new RegExp(`(["']?)${key}\\1\\s*:\\s*["'][^"']*["']`),
+          `${key}: "${value}"`
+        ) + "\n";
+      } else {
+        // Append key inside the exports object
+        return existing_trimmed.replace(
+          /module\.exports\s*=\s*\{([\s\S]*?)\};?/,
+          (m, inner) => `module.exports = {${inner.trimEnd()},\n  ${key}: "${value}"\n};`
+        ) + "\n";
+      }
+    } else {
+      // Fresh commonjs config
+      return `module.exports = {\n  ${key}: "${value}"\n};\n`;
+    }
+  }
+
+  // Default: .env format
+  const lines = existing ? existing.split("\n") : [];
+  const keyPrefix = `${key}=`;
+  let found = false;
+  const updated = lines.map((line) => {
+    if (line.startsWith(keyPrefix) || line.startsWith(`${key} =`)) {
+      found = true;
+      return `${key}="${value}"`;
+    }
+    return line;
+  });
+  if (!found) updated.push(`${key}="${value}"`);
+  return updated.filter((l, i) => l.trim() !== "" || i < updated.length - 1).join("\n") + "\n";
+}
+
+/**
+ * Inject or update a single key inside a remote config file.
+ * Supports "env" (.env) and "commonjs" (module.exports = {...}) formats.
+ */
+export async function setEnvVar(
+  serverId: string,
+  key: string,
+  value: string,
+  filePath = "/home/container/.env",
+  format: "env" | "commonjs" | string = "env",
+): Promise<void> {
+  let existing = "";
+  try {
+    existing = await readFile(serverId, filePath);
+  } catch {
+    // File may not exist yet — start fresh
+  }
+  const content = renderConfigContent(existing, key, value, format);
+  await writeFile(serverId, filePath, content);
+}
+
+/**
+ * Send a console command to a running server.
+ * Client API: POST /api/client/servers/{id}/command
+ * The server must be running for this to work.
+ */
+export async function sendCommand(serverId: string, command: string): Promise<void> {
+  await clientRequest("POST", `/servers/${serverId}/command`, { command });
+}
+
+/**
+ * Auto-setup a server by cloning a GitHub repo and running npm install.
+ * Only works when the server is already running (i.e. the egg allows it).
+ * Sends shell commands to the console in sequence.
+ */
+export async function autoSetupRepo(serverId: string, repoUrl: string): Promise<void> {
+  // Clone repo into current directory (container root)
+  await sendCommand(serverId, `git clone ${repoUrl} . 2>&1 || echo "CLONE_FAILED"`);
+  // Allow git clone to finish
+  await new Promise((r) => setTimeout(r, 8000));
+  // Install dependencies
+  await sendCommand(serverId, "npm install --omit=dev 2>&1 || npm install 2>&1");
+}
+
+export interface ActivityEvent {
+  id: string;
+  batch: string;
+  event: string;
+  is_api: boolean;
+  ip: string | null;
+  description: string | null;
+  timestamp: string;
+}
+
+/**
+ * Fetch recent activity log events for a server.
+ * Client API: GET /api/client/servers/{id}/activity
+ */
+export async function getServerActivity(serverId: string): Promise<ActivityEvent[]> {
+  if (!BASE || !KEY) {
+    throw new Error("Pterodactyl not configured");
+  }
+  const url = `${clientBase()}/servers/${serverId}/activity`;
+  const res = await fetch(url, { method: "GET", headers: headers() });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Pterodactyl activity ${res.status}: ${text}`);
+  }
+  const json = await res.json() as {
+    data: { attributes: ActivityEvent }[];
+  };
+  return (json?.data ?? []).map((d) => d.attributes);
+}
+
+export const pterodactyl = {
+  getServerStatus,
+  sendPowerSignal,
+  listServers,
+  writeFile,
+  readFile,
+  setEnvVar,
+  sendCommand,
+  autoSetupRepo,
+  getServerActivity,
+  isConfigured: () => Boolean(BASE && KEY),
+  isAppKey,
+};
