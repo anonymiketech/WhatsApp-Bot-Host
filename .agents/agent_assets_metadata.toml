@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Upel7fQBbXrwZ9hdDrxNn"
+uri = "file://anonymiketech-pterodactyl.tar.gz"
+type = "unspecified"
+title = "ANONYMIKETECH Pterodactyl Release (3.8 MB)"

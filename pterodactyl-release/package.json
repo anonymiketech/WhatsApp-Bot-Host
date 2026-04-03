@@ -1,0 +1,16 @@
+{
+  "name": "anonymiketech",
+  "version": "1.0.0",
+  "description": "ANONYMIKETECH WhatsApp Bot Hosting Platform",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc.9",
+    "protobufjs": "^8.0.0"
+  }
+}
