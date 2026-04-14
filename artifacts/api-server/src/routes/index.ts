@@ -8,6 +8,7 @@ import partnersRouter from "./partners";
 import notificationsRouter from "./notifications";
 import adminRouter from "./admin";
 import botSettingsRouter from "./bot-settings";
+import contactRouter from "./contact";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(partnersRouter);
 router.use(notificationsRouter);
 router.use(adminRouter);
 router.use(botSettingsRouter);
+router.use(contactRouter);
 
 export default router;

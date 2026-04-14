@@ -85,8 +85,23 @@ function ContactForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("sending");
-    await new Promise((r) => setTimeout(r, 1200));
-    setStatus("sent");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setStatus("error");
+        console.error("[Contact]", data.error);
+        return;
+      }
+      setStatus("sent");
+    } catch {
+      setStatus("error");
+    }
   };
 
   if (status === "sent") {
@@ -161,6 +176,11 @@ function ContactForm() {
           className="w-full rounded-xl border border-white/10 bg-white/4 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:bg-white/6 transition-colors resize-none"
         />
       </div>
+      {status === "error" && (
+        <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-2.5 text-center">
+          Something went wrong. Please try again or reach us via WhatsApp.
+        </p>
+      )}
       <button
         type="submit"
         disabled={status === "sending"}
