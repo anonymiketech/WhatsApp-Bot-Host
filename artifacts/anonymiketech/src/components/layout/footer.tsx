@@ -1,5 +1,6 @@
-import { Heart, ExternalLink, Code2, Users, Mail, Phone, MessageSquare } from "lucide-react";
+import { Heart, ExternalLink, Code2, Users, Mail, MessageSquare } from "lucide-react";
 import { Link } from "wouter";
+import logoImg from "@assets/WhatsApp_Image_2025-06-30_at_3.43.38_PM_1776199339550.jpeg";
 
 export function Footer() {
   return (
@@ -10,11 +11,16 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center">
-                <span className="text-xs font-black" style={{ color: "#00e599" }}>A</span>
-              </div>
-              <span className="font-bold text-sm" style={{ color: "#e4e4e7" }}>ANONYMIKETECH</span>
+            <div className="flex flex-col items-start mb-3">
+              <img
+                src={logoImg}
+                alt="ANONYMIKETECH"
+                className="h-14 w-auto object-contain mb-1"
+                style={{ imageRendering: "high-quality" }}
+              />
+              <span className="text-[9px] font-semibold tracking-[0.22em] uppercase mt-0.5 whitespace-nowrap" style={{ color: "#00e599", opacity: 0.7 }}>
+                Rock &amp; Roll
+              </span>
             </div>
             <p className="text-xs leading-relaxed" style={{ color: "#71717a" }}>
               Kenya's leading WhatsApp bot hosting platform. Deploy, manage, and scale bots effortlessly.

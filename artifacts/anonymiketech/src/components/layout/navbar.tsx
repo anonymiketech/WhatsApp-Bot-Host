@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useGetMe } from "@/hooks/use-users";
-import { Coins, LogOut, Bot as BotIcon, Plus, Menu, X, Store, UserCircle, Tag, LogIn, UserPlus } from "lucide-react";
+import { Coins, LogOut, Bot, Plus, Menu, X, Store, UserCircle, Tag, LogIn, UserPlus } from "lucide-react";
+import logoImg from "@assets/WhatsApp_Image_2025-06-30_at_3.43.38_PM_1776199339550.jpeg";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,14 +62,18 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
 
           {/* Brand */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
-            <div className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 group-hover:border-primary/60 transition-colors">
-              <BotIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary group-hover:scale-110 transition-transform duration-300" />
+          <Link href="/" className="flex items-center flex-shrink-0 group">
+            <div className="flex flex-col items-center leading-none">
+              <img
+                src={logoImg}
+                alt="ANONYMIKETECH"
+                className="h-9 sm:h-11 w-auto object-contain group-hover:opacity-90 transition-opacity"
+                style={{ imageRendering: "high-quality" }}
+              />
+              <span className="text-[7px] sm:text-[9px] font-semibold tracking-[0.22em] text-primary/70 uppercase mt-0.5 whitespace-nowrap">
+                Rock &amp; Roll
+              </span>
             </div>
-            <span className="font-display font-bold tracking-widest text-foreground">
-              <span className="text-sm sm:hidden">AMT</span>
-              <span className="hidden sm:inline text-xl">ANONYMIKETECH</span>
-            </span>
           </Link>
 
           {/* Center nav (desktop) */}
@@ -214,7 +219,7 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                     >
-                      <BotIcon className="w-4 h-4" />
+                      <Bot className="w-4 h-4" />
                       Dashboard
                     </Link>
 
