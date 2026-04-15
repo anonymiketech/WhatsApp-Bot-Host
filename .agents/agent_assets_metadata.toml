@@ -6,3 +6,9 @@ id = "Upel7fQBbXrwZ9hdDrxNn"
 uri = "file://anonymiketech-pterodactyl.tar.gz"
 type = "unspecified"
 title = "ANONYMIKETECH Pterodactyl Release (3.8 MB)"
+
+[[outputs]]
+id = "iIQZvtqdoZuxqzNVbzc-L"
+uri = "file://anonymiketech-panel.zip"
+type = "unspecified"
+title = "anonymiketech-panel.zip — Pterodactyl Upload Package"
