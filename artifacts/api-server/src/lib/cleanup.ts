@@ -86,11 +86,12 @@ export async function runCleanup(): Promise<void> {
       `${warnCandidates.length} warned, ${deletedIdle.length} idle deleted.`,
     );
   } catch (error) {
-    console.error("[CLEANUP] Skipped due to database error:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[CLEANUP] Skipped — database unavailable: ${msg.split("\n")[0]}`);
   }
 }
 
 export function scheduleCleanup(intervalHours = 1): void {
-  runCleanup().catch(console.error);
-  setInterval(() => runCleanup().catch(console.error), intervalHours * 60 * 60 * 1000);
+  runCleanup().catch(() => {});
+  setInterval(() => runCleanup().catch(() => {}), intervalHours * 60 * 60 * 1000);
 }
