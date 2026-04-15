@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Code2, CheckCircle2, Send, Github, Mail, Phone, User, FileText, Zap, ArrowRight, Briefcase } from "lucide-react";
+import { Users, Code2, CheckCircle2, Send, Github, Mail, Phone, User, FileText, Zap, ArrowRight, Briefcase, Cpu } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,19 @@ const BENEFITS_DEVELOPER = [
   "Dedicated developer documentation & support",
 ];
 
+const NODE_TYPES = [
+  { label: "Node.js 20 (Default)", value: "nodejs20" },
+  { label: "Node.js 18", value: "nodejs18" },
+  { label: "Node.js 22", value: "nodejs22" },
+  { label: "Node.js 24", value: "nodejs24" },
+  { label: "Node.js 25", value: "nodejs25" },
+  { label: "Node.js 16", value: "nodejs16" },
+  { label: "Node.js 14", value: "nodejs14" },
+  { label: "Python 3.11", value: "python311" },
+  { label: "Python 3.12", value: "python312" },
+  { label: "Other / Custom", value: "other" },
+];
+
 interface FormState {
   name: string;
   email: string;
@@ -32,11 +45,13 @@ interface FormState {
   githubRepo: string;
   botName: string;
   botDescription: string;
+  nodeType: string;
 }
 
 const EMPTY: FormState = {
   name: "", email: "", whatsappNumber: "", experience: "",
   message: "", githubRepo: "", botName: "", botDescription: "",
+  nodeType: "nodejs20",
 };
 
 export default function PartnersPage() {
@@ -52,7 +67,7 @@ export default function PartnersPage() {
     // also support hash-style navigation
   }, []);
 
-  const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -275,6 +290,36 @@ export default function PartnersPage() {
                               className="w-full pl-9 pr-4 py-2.5 bg-white/4 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
                             />
                           </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                            <Cpu className="w-3.5 h-3.5 opacity-60" />
+                            Node / Runtime Type *
+                          </label>
+                          <div className="relative">
+                            <select
+                              required
+                              value={form.nodeType}
+                              onChange={set("nodeType")}
+                              className="w-full pl-4 pr-8 py-2.5 bg-white/4 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all appearance-none"
+                              style={{ background: "rgba(255,255,255,0.04)", color: "inherit" }}
+                            >
+                              {NODE_TYPES.map((n) => (
+                                <option key={n.value} value={n.value} style={{ background: "#0a0a0f" }}>
+                                  {n.label}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                              <svg className="w-4 h-4 text-muted-foreground opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-1 pl-1">
+                            Select the Docker image / runtime your bot runs on
+                          </p>
                         </div>
 
                         <div>

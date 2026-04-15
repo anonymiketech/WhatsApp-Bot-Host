@@ -10,6 +10,7 @@ export const partnerApplicationsTable = pgTable("partner_applications", {
   githubRepo: varchar("github_repo", { length: 500 }),
   botName: varchar("bot_name", { length: 255 }),
   botDescription: text("bot_description"),
+  nodeType: varchar("node_type", { length: 50 }),
   experience: text("experience"),
   message: text("message"),
   status: varchar("status", { length: 20 }).notNull().default("pending"),

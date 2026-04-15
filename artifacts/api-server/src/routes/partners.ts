@@ -21,6 +21,7 @@ async function sendPartnerEmail(type: "reseller" | "developer", data: {
   githubRepo?: string;
   botName?: string;
   botDescription?: string;
+  nodeType?: string;
 }) {
   if (!resend) {
     console.warn("[Partners] RESEND_API_KEY not set — skipping email notification");
@@ -66,9 +67,10 @@ async function sendPartnerEmail(type: "reseller" | "developer", data: {
         <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">Email</td><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px"><a href="mailto:${data.email}" style="color:#8b5cf6">${data.email}</a></td></tr>
         <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">WhatsApp</td><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px">${data.whatsappNumber || "—"}</td></tr>
         <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">Bot Name</td><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px;font-weight:600">${data.botName || "—"}</td></tr>
-        <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">GitHub Repo</td><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px"><a href="${data.githubRepo}" style="color:#8b5cf6">${data.githubRepo || "—"}</a></td></tr>
-        <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">Description</td><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px">${data.botDescription || "—"}</td></tr>
-        <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;border-radius:0 0 8px 8px;font-size:12px;color:#a1a1aa">Notes</td><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;border-radius:0 0 8px 8px;font-size:14px">${data.message || "—"}</td></tr>
+        <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">Node Type</td><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px;font-weight:600;color:#8b5cf6">${data.nodeType || "—"}</td></tr>
+        <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">GitHub Repo</td><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px"><a href="${data.githubRepo}" style="color:#8b5cf6">${data.githubRepo || "—"}</a></td></tr>
+        <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:12px;color:#a1a1aa">Description</td><td style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-top:none;font-size:14px">${data.botDescription || "—"}</td></tr>
+        <tr><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;border-radius:0 0 8px 8px;font-size:12px;color:#a1a1aa">Notes</td><td style="padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-top:none;border-radius:0 0 8px 8px;font-size:14px">${data.message || "—"}</td></tr>
       </table>
       <p style="margin-top:24px;font-size:12px;color:#52525b">Review within 3-5 business days · ANONYMIKETECH Developer Portal</p>
     </div>
@@ -89,7 +91,7 @@ async function sendPartnerEmail(type: "reseller" | "developer", data: {
 
 router.post("/api/partner-applications", async (req, res) => {
   try {
-    const { type, name, email, whatsappNumber, githubRepo, botName, botDescription, experience, message } = req.body;
+    const { type, name, email, whatsappNumber, githubRepo, botName, botDescription, nodeType, experience, message } = req.body;
 
     if (!type || !name || !email) {
       return res.status(400).json({ error: "type, name and email are required" });
@@ -109,11 +111,11 @@ router.post("/api/partner-applications", async (req, res) => {
 
     const [application] = await db
       .insert(partnerApplicationsTable)
-      .values({ type, name, email, whatsappNumber, githubRepo, botName, botDescription, experience, message })
+      .values({ type, name, email, whatsappNumber, githubRepo, botName, botDescription, nodeType, experience, message })
       .returning();
 
     // Fire and forget — don't block the response
-    sendPartnerEmail(type, { name, email, whatsappNumber, githubRepo, botName, botDescription, experience, message });
+    sendPartnerEmail(type, { name, email, whatsappNumber, githubRepo, botName, botDescription, nodeType, experience, message });
 
     return res.status(201).json({ success: true, id: application.id });
   } catch (err) {
