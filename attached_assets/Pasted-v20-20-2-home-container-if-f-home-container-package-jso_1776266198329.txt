@@ -1,0 +1,52 @@
+v20.20.2
+:/home/container$ if [ -f /home/container/package.json ] && [ ! -d /home/container/node_modules ]; then [ -f /home/container/package-lock.json ] && /usr/local/bin/npm ci --no-audit --no-fund || /usr/local/bin/npm install --no-audit --no-fund; fi; /usr/local/bin/${CMD_START}
+
+up to date in 610ms
+
+> anonymiketech@1.0.0 start
+> node --enable-source-maps ./dist/index.mjs
+
+[CLEANUP] Running cleanup job…
+{"level":30,"time":1776266073767,"pid":38,"hostname":"dad7fc6f-65c8-4621-a65a-6c96294fd9b2","publicDir":"/home/container/public","msg":"Serving static frontend from disk"}
+(node:38) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"level":30,"time":1776266073783,"pid":38,"hostname":"dad7fc6f-65c8-4621-a65a-6c96294fd9b2","port":4057,"msg":"Server listening"}
+_DrizzleQueryError: Failed query: delete from "email_verifications" where "email_verifications"."expires_at" < $1
+params: 2026-04-15T15:14:33.764Z
+    at NodePgPreparedQuery.queryWithCache (file:///home/container/dist/index.mjs:50735:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async runCleanup (file:///home/container/dist/index.mjs:62355:3) {
+  query: 'delete from "email_verifications" where "email_verifications"."expires_at" < $1',
+  params: [ '2026-04-15T15:14:33.764Z' ],
+  cause: error: The endpoint has been disabled. Enable it using the API and retry.
+      at file:///home/container/dist/index.mjs:33163:15
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async file:///home/container/dist/index.mjs:50964:20
+      at async NodePgPreparedQuery.queryWithCache (file:///home/container/dist/index.mjs:50733:16)
+      at async runCleanup (file:///home/container/dist/index.mjs:62355:3) {
+    length: 87,
+    severity: 'ERROR',
+    code: 'XX000',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: undefined,
+    line: undefined,
+    routine: undefined
+  }
+}
