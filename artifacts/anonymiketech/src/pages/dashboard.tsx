@@ -348,9 +348,11 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isAuthLoading]);
 
+  const BASE_URL = import.meta.env.BASE_URL ?? "/";
+
   useEffect(() => {
     if (isAuthenticated) {
-      fetch("/api/users/me", { credentials: "include" })
+      fetch(`${BASE_URL}api/users/me`, { credentials: "include" })
         .then((r) => r.json())
         .then((d) => setCoins(d?.user?.coins ?? null))
         .catch(() => {});

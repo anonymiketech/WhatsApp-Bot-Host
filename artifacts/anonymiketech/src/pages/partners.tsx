@@ -70,13 +70,16 @@ export default function PartnersPage() {
   const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
+  const BASE_URL = import.meta.env.BASE_URL ?? "/";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/partner-applications", {
+      const res = await fetch(`${BASE_URL}api/partner-applications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ type: tab, ...form }),
       });
       const data = await res.json();
