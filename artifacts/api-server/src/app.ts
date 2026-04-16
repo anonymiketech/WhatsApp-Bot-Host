@@ -13,6 +13,10 @@ scheduleCleanup(6);
 
 const app: Express = express();
 
+// Trust Nginx reverse proxy — required for secure cookies and correct
+// X-Forwarded-Proto detection when running behind Nginx on VPS
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

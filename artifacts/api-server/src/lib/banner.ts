@@ -57,6 +57,7 @@ export function printBanner(port: number): void {
   const nodeVer = process.version;
   const mem = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
   const started = new Date().toUTCString();
+  const appUrl = process.env["APP_URL"] ?? `http://localhost:${port}`;
 
   const title =
     `${BOLD}${ORANGE}A${YELLOW}N${GREEN}O${CYAN}N${BLUE}Y${MAGENTA}M${RED}I${ORANGE}K${YELLOW}E${GREEN}T${CYAN}E${BLUE}C${MAGENTA}H${R}` +
@@ -71,6 +72,7 @@ export function printBanner(port: number): void {
     divider(),
     row(""),
     kv("Status", isProd ? "🟢  Online & Serving" : "🔵  Dev Mode", "✅", GREEN),
+    kv("URL", appUrl, "🌍", CYAN),
     kv("Port", `${port}`, "🌐", CYAN),
     kv("Environment", env, "⚙️ ", isProd ? GREEN : YELLOW),
     kv("Node.js", nodeVer, "📦", BLUE),
