@@ -120,8 +120,12 @@ CREATE TABLE IF NOT EXISTS "partner_applications" (
   "github_repo" varchar(500),
   "bot_name" varchar(255),
   "bot_description" text,
+  "node_type" varchar(50),
   "experience" text,
   "message" text,
   "status" varchar(20) NOT NULL DEFAULT 'pending',
   "created_at" timestamptz NOT NULL DEFAULT now()
 );
+
+-- Safe migration: add node_type if table already exists without it
+ALTER TABLE "partner_applications" ADD COLUMN IF NOT EXISTS "node_type" varchar(50);
