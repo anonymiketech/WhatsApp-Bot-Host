@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -57,5 +57,14 @@ if (process.env.SERVE_STATIC === "true") {
   });
   logger.info({ publicDir }, "Serving static frontend from disk");
 }
+
+// Global error handler — catches any unhandled errors in routes/middleware
+// Must have 4 params for Express to recognise it as an error handler
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  logger.error({ err, url: req.url, method: req.method }, "Unhandled server error");
+  if (res.headersSent) return;
+  res.status(500).json({ error: "An unexpected error occurred. Please try again." });
+});
 
 export default app;

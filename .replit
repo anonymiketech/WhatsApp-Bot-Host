@@ -35,8 +35,4 @@ PTERODACTYL_API_KEY = "ptla_HlWH8bEhddk466QnGeioFAaZSWXEY9bJz0e5RL3zHAB"
 
 [[ports]]
 localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 20391
 externalPort = 80
