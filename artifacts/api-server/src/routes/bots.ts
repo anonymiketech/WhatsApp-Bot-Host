@@ -115,6 +115,18 @@ router.post("/bots", async (req, res) => {
     })
     .returning();
 
+  // Built-in GitHub repo URLs per bot type — used as fallback when admin hasn't set an override
+  const BOT_GITHUB_URLS: Record<string, string> = {
+    "truth":       "https://github.com/Courtney250/TRUTH-MD",
+    "king-md":     "https://github.com/KING-BOT-OFFICIAL/KING-BOT-MD-V1",
+    "cypher-x":    "https://github.com/Dark-Xploit/CypherX",
+    "bwm-xmd-go":  "https://github.com/Bwmxmd254/BWM-XMD-GO",
+    "atassa-cloud": "https://github.com/mauricegift/atassa",
+    "dave-x":      "https://github.com/DaveTech-Incr/DAVE-X",
+    "wolf-bot":    "https://github.com/sil3nt-wolf/silentwolf",
+    "keith-md":    "https://github.com/kkeizza/Keith",
+  };
+
   // Start on Pterodactyl if server ID provided
   if (pteroServerId && pterodactyl.isConfigured()) {
     try {
@@ -127,36 +139,57 @@ router.post("/bots", async (req, res) => {
 
       const envKey = botCfg?.sessionEnvKey ?? "SESSION_ID";
       const envTemplate = botCfg?.envTemplate ?? null;
-      const shouldAutoSetup = botCfg?.autoSetup ?? false;
-      const repoUrl = botCfg?.githubRepoOverride ?? null;
       const configFilePath = botCfg?.configFilePath ?? "/home/container/.env";
       const configFileFormat = botCfg?.configFileFormat ?? "env";
+
+      // Resolve repo URL: admin override → built-in catalog fallback
+      const repoUrl = botCfg?.githubRepoOverride ?? BOT_GITHUB_URLS[botType ?? ""] ?? null;
+
+      // Auto-setup is on by default whenever a repo URL is available; admin can disable it explicitly
+      const shouldAutoSetup = botCfg ? (botCfg.autoSetup ?? true) : (repoUrl !== null);
 
       // If admin has set a pterodactylServerIdOverride in bot_settings, prefer it
       const effectivePteroId = botCfg?.pterodactylServerIdOverride ?? pteroServerId;
 
-      logger.info({ botId: bot.id, pteroServerId, effectivePteroId, envKey, configFilePath, configFileFormat, hasTemplate: !!envTemplate }, "Injecting session into server config");
+      logger.info(
+        { botId: bot.id, effectivePteroId, envKey, configFilePath, repoUrl, shouldAutoSetup },
+        "Starting bot deployment"
+      );
 
-      if (envTemplate) {
-        // Write a fully-rendered config file from the admin template, substituting {session}
-        const rendered = envTemplate.replace(/\{session\}/g, sessionId);
-        await pterodactyl.writeFile(effectivePteroId, configFilePath, rendered);
-      } else {
-        // Inject the session key into the existing config file with the correct format
-        await pterodactyl.setEnvVar(effectivePteroId, envKey, sessionId, configFilePath, configFileFormat);
-      }
-
-      // Auto-setup: start the server, git clone the repo, then restart
       if (shouldAutoSetup && repoUrl) {
-        logger.info({ botId: bot.id, repoUrl }, "Auto-setup: starting server to run git clone");
+        // ── Full setup flow ──────────────────────────────────────────────────
+        // 1. Boot the container so it can accept console commands
+        logger.info({ botId: bot.id, repoUrl }, "Auto-setup: booting container for git clone");
         await pterodactyl.sendPowerSignal(effectivePteroId, "start");
-        // Give the container a moment to boot
-        await new Promise((r) => setTimeout(r, 5000));
-        await pterodactyl.autoSetupRepo(effectivePteroId, repoUrl);
-        // Wait for npm install to complete then restart with bot files
-        await new Promise((r) => setTimeout(r, 15000));
+        await new Promise((r) => setTimeout(r, 6000));
+
+        // 2. Clone repo files into the container working directory
+        await pterodactyl.sendCommand(effectivePteroId, `git clone ${repoUrl} . 2>&1 || echo "CLONE_FAILED"`);
+        await new Promise((r) => setTimeout(r, 10000));
+
+        // 3. Install dependencies
+        await pterodactyl.sendCommand(effectivePteroId, "npm install --omit=dev 2>&1 || npm install 2>&1");
+        await new Promise((r) => setTimeout(r, 20000));
+
+        // 4. Inject session AFTER clone so the repo's .env doesn't overwrite it
+        if (envTemplate) {
+          const rendered = envTemplate.replace(/\{session\}/g, sessionId);
+          await pterodactyl.writeFile(effectivePteroId, configFilePath, rendered);
+        } else {
+          await pterodactyl.setEnvVar(effectivePteroId, envKey, sessionId, configFilePath, configFileFormat);
+        }
+
+        // 5. Restart with bot files and correct session in place
         await pterodactyl.sendPowerSignal(effectivePteroId, "restart");
+        logger.info({ botId: bot.id }, "Auto-setup complete — bot restarting with session");
       } else {
+        // ── Session-only flow (files already present in the egg) ─────────────
+        if (envTemplate) {
+          const rendered = envTemplate.replace(/\{session\}/g, sessionId);
+          await pterodactyl.writeFile(effectivePteroId, configFilePath, rendered);
+        } else {
+          await pterodactyl.setEnvVar(effectivePteroId, envKey, sessionId, configFilePath, configFileFormat);
+        }
         await pterodactyl.sendPowerSignal(effectivePteroId, "start");
       }
 

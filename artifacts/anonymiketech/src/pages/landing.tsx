@@ -166,7 +166,7 @@ export default function Landing() {
                     onClick={() => setAuthModal("sign-up")}
                     className="px-8 py-4 bg-primary text-background hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(0,229,153,0.4)] rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
                   >
-                    Start Hosting Free <ArrowRight className="w-5 h-5" />
+                    Get Started — It's Free <ArrowRight className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => setAuthModal("sign-in")}
