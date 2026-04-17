@@ -51,10 +51,13 @@ CREATE TABLE IF NOT EXISTS "bots" (
   "pterodactyl_server_id" varchar,
   "coins_per_month" integer NOT NULL DEFAULT 900,
   "status" text NOT NULL DEFAULT 'stopped',
+  "suspended" boolean NOT NULL DEFAULT false,
   "expires_at" timestamptz,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   "updated_at" timestamptz NOT NULL DEFAULT now()
 );
+-- Safe migration: add suspended if table already exists
+ALTER TABLE "bots" ADD COLUMN IF NOT EXISTS "suspended" boolean NOT NULL DEFAULT false;
 
 -- Bot settings (admin-controlled catalog overrides)
 CREATE TABLE IF NOT EXISTS "bot_settings" (

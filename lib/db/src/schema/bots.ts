@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 export const botsTable = pgTable("bots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -10,6 +10,7 @@ export const botsTable = pgTable("bots", {
   pterodactylServerId: varchar("pterodactyl_server_id"),
   coinsPerMonth: integer("coins_per_month").notNull().default(900),
   status: text("status").notNull().default("stopped"),
+  suspended: boolean("suspended").notNull().default(false),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

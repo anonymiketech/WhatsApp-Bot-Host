@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { usersTable, notificationsTable, settingsTable, botsTable } from "@workspace/db/schema";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc, count, and } from "drizzle-orm";
 import { pterodactyl } from "../services/pterodactyl";
 
 const router = Router();
@@ -106,6 +106,7 @@ router.get("/admin/bots", async (req, res) => {
       id: botsTable.id,
       name: botsTable.name,
       status: botsTable.status,
+      suspended: botsTable.suspended,
       botTypeId: botsTable.botTypeId,
       pterodactylServerId: botsTable.pterodactylServerId,
       coinsPerMonth: botsTable.coinsPerMonth,
@@ -175,6 +176,26 @@ router.post("/pterodactyl/power", async (req, res) => {
   } catch (err: any) {
     return res.status(502).json({ error: err?.message ?? "Failed to send power signal" });
   }
+});
+
+// Suspend or unsuspend a deployed bot instance — admin only
+router.put("/admin/bots/:botId/suspend", async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
+
+  const { botId } = req.params;
+  const { suspended } = req.body as { suspended?: boolean };
+  if (typeof suspended !== "boolean") return res.status(400).json({ error: "suspended (boolean) required" });
+
+  const [bot] = await db.select().from(botsTable).where(eq(botsTable.id, botId));
+  if (!bot) return res.status(404).json({ error: "Bot not found" });
+
+  const [updated] = await db
+    .update(botsTable)
+    .set({ suspended })
+    .where(eq(botsTable.id, botId))
+    .returning();
+
+  return res.json({ success: true, botId, suspended: updated.suspended });
 });
 
 export default router;

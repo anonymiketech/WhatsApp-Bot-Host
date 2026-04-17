@@ -28,6 +28,7 @@ function normalizeBotResponse(
     id: bot.id,
     name: bot.name,
     status: liveStatus ?? bot.status,
+    suspended: bot.suspended ?? false,
     botTypeId: bot.botTypeId ?? null,
     pterodactylServerId: pteroId,
     panelUrl: pteroId && PTERO_BASE ? `${PTERO_BASE}/server/${pteroId}` : null,
@@ -291,6 +292,11 @@ router.post("/bots/start-bot", async (req, res) => {
     return;
   }
 
+  if (bot.suspended) {
+    res.status(403).json({ error: "This bot has been suspended by an administrator. Contact support." });
+    return;
+  }
+
   if (!bot.expiresAt || bot.expiresAt <= new Date()) {
     res.status(400).json({ error: "Subscription expired. Please renew your bot to continue." });
     return;
@@ -376,6 +382,11 @@ router.post("/bots/restart-bot", async (req, res) => {
     return;
   }
 
+  if (bot.suspended) {
+    res.status(403).json({ error: "This bot has been suspended by an administrator. Contact support." });
+    return;
+  }
+
   if (!bot.expiresAt || bot.expiresAt <= new Date()) {
     res.status(400).json({ error: "Subscription expired. Renew before restarting." });
     return;
@@ -429,7 +440,7 @@ router.get("/bots/check-repo", async (req, res) => {
     }
     const apiData = await apiRes.json() as { default_branch?: string; private?: boolean };
     if (apiData.private) {
-      res.json({ compatible: false, reason: "Repository is private — panel cannot access it.", files: [] });
+      res.json({ compatible: false, reason: "Repository is private — cloud servers cannot access it.", files: [] });
       return;
     }
     defaultBranch = apiData.default_branch ?? "main";
@@ -476,8 +487,8 @@ router.get("/bots/check-repo", async (req, res) => {
   else if (hasPython) runtime = "Python";
 
   const reason = compatible
-    ? `${runtime} project — compatible with Pterodactyl panel deployment.`
-    : "No recognizable runtime files found. This bot may not support panel deployment.";
+    ? `${runtime} project — compatible with cloud deployment.`
+    : "No recognizable runtime files found. This bot may not support cloud deployment.";
 
   res.json({ compatible, reason, files: found, runtime, score, repoUrl, owner, repo });
 });

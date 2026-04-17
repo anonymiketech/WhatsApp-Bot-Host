@@ -16,6 +16,7 @@ interface AdminBot {
   id: string;
   name: string;
   status: string;
+  suspended: boolean;
   botTypeId: string | null;
   pterodactylServerId: string | null;
   coinsPerMonth: number;
@@ -337,6 +338,7 @@ export default function AdminPage() {
   const [botFilter, setBotFilter] = useState<"all" | "running" | "stopped">("all");
   const [panelActionLoading, setPanelActionLoading] = useState<string | null>(null);
   const [panelActionResult, setPanelActionResult] = useState<{ id: string; success: boolean; msg: string } | null>(null);
+  const [suspendLoading, setSuspendLoading] = useState<string | null>(null);
 
   // Bot Catalog Management
   type BotSetting = {
@@ -429,6 +431,25 @@ export default function AdminPage() {
       }
     } finally {
       setLoadingBots(false);
+    }
+  };
+
+  const handleSuspend = async (botId: string, suspend: boolean) => {
+    setSuspendLoading(botId);
+    try {
+      const res = await fetch(`/api/admin/bots/${botId}/suspend`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ suspended: suspend }),
+      });
+      if (res.ok) {
+        setDeployedBots((prev) =>
+          prev.map((b) => b.id === botId ? { ...b, suspended: suspend } : b)
+        );
+      }
+    } finally {
+      setSuspendLoading(null);
     }
   };
 
@@ -1224,7 +1245,8 @@ export default function AdminPage() {
                     <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground">Status</th>
                     <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground hidden md:table-cell">Type</th>
                     <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground hidden md:table-cell">Expires</th>
-                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground">Panel</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground">Server</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground">Inactive</th>
                     <th className="text-right px-5 py-2.5 text-xs font-semibold text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -1241,9 +1263,16 @@ export default function AdminPage() {
                       const isActing = panelActionLoading === b.id;
                       const result = panelActionResult?.id === b.id ? panelActionResult : null;
                       return (
-                        <tr key={b.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+                        <tr key={b.id} className={`border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors ${b.suspended ? "opacity-60" : ""}`}>
                           <td className="px-5 py-3">
-                            <div className="font-semibold text-xs">{b.name}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-xs">{b.name}</span>
+                              {b.suspended && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                                  INACTIVE
+                                </span>
+                              )}
+                            </div>
                             {catalogEntry && (
                               <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1" style={{ color: catalogEntry.accent }}>
                                 {catalogEntry.name}
@@ -1279,6 +1308,20 @@ export default function AdminPage() {
                             ) : (
                               <span className="text-[11px] text-muted-foreground">—</span>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => handleSuspend(b.id, !b.suspended)}
+                              disabled={suspendLoading === b.id}
+                              title={b.suspended ? "Reactivate bot" : "Suspend bot (make inactive)"}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${b.suspended ? "bg-orange-500/70" : "bg-white/20"}`}
+                            >
+                              {suspendLoading === b.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin mx-auto text-white" />
+                              ) : (
+                                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${b.suspended ? "translate-x-4.5" : "translate-x-1"}`} />
+                              )}
+                            </button>
                           </td>
                           <td className="px-5 py-3">
                             <div className="flex items-center justify-end gap-1.5">

@@ -361,6 +361,26 @@ export function BotCard({ bot }: BotCardProps) {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {bot.suspended && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-10 rounded-2xl flex flex-col items-center justify-center p-6 text-center"
+            style={{ background: "rgba(10,10,10,0.90)", backdropFilter: "blur(6px)" }}
+          >
+            <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-5 h-5 text-orange-400" />
+            </div>
+            <h4 className="font-bold text-base mb-1 text-orange-300">Bot Inactive</h4>
+            <p className="text-xs text-muted-foreground max-w-[220px] leading-relaxed">
+              This bot has been temporarily deactivated by an administrator. Contact support if you believe this is a mistake.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
