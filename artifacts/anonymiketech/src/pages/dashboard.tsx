@@ -216,7 +216,7 @@ function TruthBotFeatureCard({ onDeploy }: { onDeploy: () => void }) {
           </div>
           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5">
             <Server className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[10px] text-muted-foreground font-medium">Panel Hosted</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Cloud Hosted</span>
           </div>
         </div>
 
@@ -244,7 +244,7 @@ function TruthBotFeatureCard({ onDeploy }: { onDeploy: () => void }) {
         <div className="space-y-1.5 mb-4">
           {[
             "Your own dedicated WhatsApp session",
-            "Runs 24/7 on our hosting panel",
+            "Runs 24/7 on our cloud servers",
             "Full TRUTH-MD feature set out of the box",
           ].map((item) => (
             <div key={item} className="flex items-center gap-2 text-xs" style={{ color: "#a1a1aa" }}>

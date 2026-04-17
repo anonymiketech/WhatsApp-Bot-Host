@@ -455,7 +455,7 @@ export default function Landing() {
                     color: "#a78bfa",
                     bg: "rgba(167,139,250,0.1)",
                     title: "Browse & Choose a Bot",
-                    desc: "Pick from 9 powerful WhatsApp bots in the marketplace. Each bot is panel-hosted, ready to run.",
+                    desc: "Pick from 9 powerful WhatsApp bots in the marketplace. Each bot is cloud-hosted, ready to run.",
                     tag: "9 Bots Available",
                     tagColor: "#a78bfa",
                     detail: ["TRUTH-MD, X-Bot & more", "View features & pricing", "Deploy any time"],
@@ -529,7 +529,7 @@ export default function Landing() {
                   <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
                   <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
                 </div>
-                <span className="text-[11px] text-muted-foreground font-mono">anonymiketech — bot-panel — live</span>
+                <span className="text-[11px] text-muted-foreground font-mono">anonymiketech — cloud-deploy — live</span>
                 <div className="ml-auto flex items-center gap-1.5">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
@@ -600,7 +600,7 @@ export default function Landing() {
                   handle: "@devbotpro",
                   role: "Bot Developer & Reseller",
                   gradient: "linear-gradient(135deg, #0ea5e9, #06b6d4)",
-                  quote: "Deployed 3 bots for my clients in under 10 minutes. The panel is rock-solid, no downtime in 60+ days. This is the real deal.",
+                  quote: "Deployed 3 bots for my clients in under 10 minutes. The platform is rock-solid, no downtime in 60+ days. This is the real deal.",
                   stars: 5,
                   badge: "Top Reseller",
                   badgeColor: "#00e599",
@@ -744,10 +744,10 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="text-base font-display font-bold">Main Dev</h3>
-                    <p className="text-sm text-muted-foreground/70 mt-1">Panel Owner · Product Lead</p>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Platform Owner · Product Lead</p>
                   </div>
                   <p className="text-xs text-muted-foreground/70 leading-relaxed max-w-[220px]">
-                    You lead the panel, product direction, and platform experience. Courtney is the collaborator and bot developer.
+                    You lead the platform, product direction, and overall experience. Courtney is the collaborator and bot developer.
                   </p>
                   <Link
                     href="/partners?tab=developer"
@@ -755,7 +755,7 @@ export default function Landing() {
                     style={{ color: "#a78bfa" }}
                   >
                     <Crown className="w-3.5 h-3.5" />
-                    Main Panel Owner
+                    Platform Owner
                   </Link>
                 </div>
               </motion.div>

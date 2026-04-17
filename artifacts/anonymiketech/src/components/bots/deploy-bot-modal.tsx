@@ -30,7 +30,7 @@ interface LogLine {
 // Steps shown in the log terminal during deployment
 const DEPLOY_STEPS: Array<{ delay: number; text: string; type: LogLine["type"] }> = [
   { delay: 0,    text: "Validating your session key format…",             type: "step" },
-  { delay: 800,  text: "Connecting to hosting panel (Pterodactyl)…",      type: "step" },
+  { delay: 800,  text: "Connecting to cloud hosting servers…",             type: "step" },
   { delay: 1800, text: "Injecting session into bot config file…",          type: "step" },
   { delay: 2800, text: "Sending start signal to bot server…",              type: "step" },
   { delay: 3800, text: "Waiting for server to come online…",               type: "info" },
@@ -100,7 +100,7 @@ function RepoScanBadge({ scan, scanning }: { scan: RepoScan | null; scanning: bo
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-2 rounded-lg bg-secondary/40 border border-white/8">
         <ScanSearch className="w-3.5 h-3.5 animate-pulse" />
-        Scanning repository for panel compatibility…
+        Scanning repository for cloud compatibility…
       </div>
     );
   }
@@ -111,7 +111,7 @@ function RepoScanBadge({ scan, scanning }: { scan: RepoScan | null; scanning: bo
       <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-primary/8 border border-primary/20 text-xs">
         <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-semibold text-primary">Panel-compatible — {scan.runtime}</p>
+          <p className="font-semibold text-primary">Cloud-compatible — {scan.runtime}</p>
           <p className="text-muted-foreground mt-0.5">{scan.reason}</p>
           {scan.files.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
@@ -131,7 +131,7 @@ function RepoScanBadge({ scan, scanning }: { scan: RepoScan | null; scanning: bo
     <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-yellow-500/8 border border-yellow-500/20 text-xs">
       <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0 mt-0.5" />
       <div>
-        <p className="font-semibold text-yellow-400">Panel deployment may not be supported</p>
+        <p className="font-semibold text-yellow-400">Cloud deployment may not be supported</p>
         <p className="text-muted-foreground mt-0.5">{scan.reason}</p>
         <p className="text-muted-foreground mt-0.5">You can still deploy — your session will be managed by our platform.</p>
       </div>
@@ -355,7 +355,7 @@ export function DeployBotModal({ bot, open, onOpenChange }: DeployBotModalProps)
                     {bot.pterodactylServerId && (
                       <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                         <Server className="w-2.5 h-2.5" />
-                        Panel Hosted
+                        Cloud Hosted
                       </span>
                     )}
                   </div>

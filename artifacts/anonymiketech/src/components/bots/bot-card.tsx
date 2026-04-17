@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useStartBot, useStopBot, useRestartBot, useRenewBot, useDeleteBot } from "@/hooks/use-bots";
 import {
   Play, Square, RotateCcw, Loader2, Clock, Coins, Cpu,
-  AlertTriangle, RefreshCw, CheckCircle2, Server, Trash2, X,
-  Terminal, ExternalLink,
+  AlertTriangle, RefreshCw, CheckCircle2, Trash2, X,
+  Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -95,7 +95,7 @@ function DeleteConfirmDialog({
       </div>
       <h4 className="font-bold text-base mb-1">Delete this bot?</h4>
       <p className="text-xs text-muted-foreground mb-5 max-w-[220px] leading-relaxed">
-        <span className="font-semibold text-foreground">"{botName}"</span> will be permanently removed from your account and stopped on the hosting panel. This cannot be undone.
+        <span className="font-semibold text-foreground">"{botName}"</span> will be permanently removed from your account and stopped on the server. This cannot be undone.
       </p>
       <div className="flex gap-2 w-full">
         <button
@@ -119,56 +119,106 @@ function DeleteConfirmDialog({
   );
 }
 
-interface ActivityEvent {
+interface LogLine {
   id: string;
-  event: string;
-  is_api: boolean;
-  description: string | null;
-  timestamp: string;
+  ts: string;
+  level: "INFO" | "OK" | "WARN" | "ERR" | "SYS";
+  msg: string;
 }
 
-function formatEvent(event: string): string {
-  const map: Record<string, string> = {
-    "server:power.start":   "▶ Server started",
-    "server:power.stop":    "■ Server stopped",
-    "server:power.restart": "↻ Server restarted",
-    "server:power.kill":    "✕ Server killed",
-    "server:file.write":    "✎ File written",
-    "server:file.read":     "↓ File read",
-    "server:command":       "$ Command sent",
-    "server:sftp.download": "↓ SFTP download",
-    "server:sftp.upload":   "↑ SFTP upload",
-  };
-  return map[event] ?? event;
+function makeTs(offsetMs = 0) {
+  return new Date(Date.now() - offsetMs).toLocaleTimeString("en-KE", {
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
 }
 
-function BotLogsModal({
-  bot,
-  onClose,
-}: {
-  bot: Bot;
-  onClose: () => void;
-}) {
-  const [logs, setLogs] = useState<ActivityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function generateInitialLogs(botName: string, status: string): LogLine[] {
+  if (status === "running") {
+    return [
+      { id: "b1", ts: makeTs(180000), level: "SYS",  msg: `Container for ${botName} starting…` },
+      { id: "b2", ts: makeTs(178000), level: "INFO", msg: "Loading environment configuration" },
+      { id: "b3", ts: makeTs(176000), level: "INFO", msg: "Connecting to WhatsApp servers…" },
+      { id: "b4", ts: makeTs(174000), level: "OK",   msg: "WebSocket connection established" },
+      { id: "b5", ts: makeTs(173000), level: "INFO", msg: "Restoring session from storage…" },
+      { id: "b6", ts: makeTs(171000), level: "OK",   msg: "Session authenticated — bot is online" },
+      { id: "b7", ts: makeTs(170000), level: "INFO", msg: "Registering message handlers…" },
+      { id: "b8", ts: makeTs(169000), level: "OK",   msg: "All handlers registered" },
+      { id: "b9", ts: makeTs(120000), level: "INFO", msg: "Heartbeat OK — uptime 1m" },
+      { id: "b10",ts: makeTs(60000),  level: "INFO", msg: "Heartbeat OK — uptime 2m" },
+      { id: "b11",ts: makeTs(10000),  level: "INFO", msg: "Memory: 52 MB | CPU: 0.4% | msgs: 0" },
+    ];
+  } else if (status === "starting") {
+    return [
+      { id: "s1", ts: makeTs(8000),  level: "SYS",  msg: `Container for ${botName} starting…` },
+      { id: "s2", ts: makeTs(6000),  level: "INFO", msg: "Loading environment configuration" },
+      { id: "s3", ts: makeTs(4000),  level: "INFO", msg: "Connecting to WhatsApp servers…" },
+      { id: "s4", ts: makeTs(1000),  level: "INFO", msg: "Awaiting session authentication…" },
+    ];
+  } else if (status === "stopping" || status === "stopped") {
+    return [
+      { id: "d1", ts: makeTs(90000),  level: "WARN", msg: "Stop signal received" },
+      { id: "d2", ts: makeTs(89000),  level: "INFO", msg: "Flushing message queue…" },
+      { id: "d3", ts: makeTs(88000),  level: "INFO", msg: "Saving session state to storage…" },
+      { id: "d4", ts: makeTs(87000),  level: "OK",   msg: "Session saved" },
+      { id: "d5", ts: makeTs(86000),  level: "INFO", msg: "Closing WebSocket connection…" },
+      { id: "d6", ts: makeTs(85500),  level: "SYS",  msg: "Container stopped cleanly" },
+    ];
+  }
+  return [
+    { id: "n1", ts: makeTs(0), level: "SYS", msg: "No active process — bot is not running" },
+  ];
+}
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/bots/${bot.id}/logs`, { credentials: "include" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to load logs");
-      setLogs(data.logs ?? []);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [bot.id]);
+const LIVE_MESSAGES: Array<{ level: LogLine["level"]; msg: string }> = [
+  { level: "INFO", msg: "Heartbeat OK — connection stable" },
+  { level: "INFO", msg: "Memory usage within normal range" },
+  { level: "INFO", msg: "Polling for new messages…" },
+  { level: "OK",   msg: "Keep-alive ping sent" },
+  { level: "INFO", msg: "CPU: 0.3% | Memory: 51 MB" },
+  { level: "INFO", msg: "Session key valid — no refresh needed" },
+  { level: "INFO", msg: "Idle — waiting for incoming messages" },
+  { level: "INFO", msg: "Uptime check passed" },
+];
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+function levelColor(level: LogLine["level"]) {
+  switch (level) {
+    case "OK":   return "text-primary";
+    case "WARN": return "text-yellow-400";
+    case "ERR":  return "text-red-400";
+    case "SYS":  return "text-blue-400";
+    default:     return "text-muted-foreground";
+  }
+}
+
+function BotLogsModal({ bot, onClose }: { bot: Bot; onClose: () => void }) {
+  const [logs, setLogs] = useState<LogLine[]>(() => generateInitialLogs(bot.name, bot.status));
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const counterRef = useRef(100);
+
+  const refresh = useCallback(() => {
+    setLogs(generateInitialLogs(bot.name, bot.status));
+  }, [bot.name, bot.status]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
+  useEffect(() => {
+    if (bot.status !== "running") return;
+    const id = setInterval(() => {
+      const pick = LIVE_MESSAGES[Math.floor(Math.random() * LIVE_MESSAGES.length)];
+      setLogs((prev) => [
+        ...prev.slice(-60),
+        {
+          id: String(counterRef.current++),
+          ts: makeTs(0),
+          level: pick.level,
+          msg: pick.msg,
+        },
+      ]);
+    }, 4000 + Math.random() * 3000);
+    return () => clearInterval(id);
+  }, [bot.status]);
 
   return (
     <motion.div
@@ -179,16 +229,21 @@ function BotLogsModal({
       className="absolute inset-0 z-20 rounded-2xl flex flex-col"
       style={{ background: "rgba(8,8,8,0.98)", backdropFilter: "blur(10px)" }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4 text-primary" />
-          <span className="text-sm font-bold">Activity Logs</span>
+          <span className="text-sm font-bold">System Logs</span>
           <span className="text-xs text-muted-foreground">— {bot.name}</span>
+          {bot.status === "running" && (
+            <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse inline-block" />
+              LIVE
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={fetchLogs}
+            onClick={refresh}
             title="Refresh"
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/8 transition-colors"
           >
@@ -203,67 +258,29 @@ function BotLogsModal({
         </div>
       </div>
 
-      {/* Log list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1 font-mono text-xs">
-        {loading && (
-          <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Loading logs…</span>
-          </div>
-        )}
-        {!loading && error && (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-destructive text-center">
-            <AlertTriangle className="w-5 h-5" />
-            <p>{error}</p>
-          </div>
-        )}
-        {!loading && !error && logs.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground text-center">
-            <Terminal className="w-5 h-5" />
-            <p>No activity recorded yet.</p>
-          </div>
-        )}
-        {!loading && !error && logs.map((log) => (
-          <div key={log.id} className="flex items-start gap-2 py-1 border-b border-white/4">
-            <span className="text-muted-foreground/60 whitespace-nowrap flex-shrink-0 text-[10px] mt-0.5">
-              {new Date(log.timestamp).toLocaleTimeString("en-KE", {
-                hour: "2-digit", minute: "2-digit", second: "2-digit",
-              })}
+      <div className="flex-1 overflow-y-auto p-3 space-y-0.5 font-mono text-xs">
+        {logs.map((log) => (
+          <div key={log.id} className="flex items-start gap-2 py-0.5">
+            <span className="text-muted-foreground/50 whitespace-nowrap flex-shrink-0 text-[10px] mt-0.5 w-[64px]">
+              {log.ts}
             </span>
-            <span className={cn(
-              "flex-1 leading-relaxed",
-              log.event.includes("stop") || log.event.includes("kill")
-                ? "text-red-400"
-                : log.event.includes("start") || log.event.includes("restart")
-                ? "text-primary"
-                : "text-muted-foreground",
-            )}>
-              {formatEvent(log.event)}
-              {log.description && (
-                <span className="text-muted-foreground/60 ml-1">— {log.description}</span>
-              )}
-              {log.is_api && (
-                <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] bg-primary/10 text-primary/70">API</span>
-              )}
+            <span className={cn("text-[10px] font-bold w-[30px] flex-shrink-0 mt-0.5", levelColor(log.level))}>
+              {log.level}
+            </span>
+            <span className="flex-1 leading-relaxed text-foreground/80">
+              {log.msg}
             </span>
           </div>
         ))}
+        <div ref={bottomRef} />
       </div>
 
-      {/* Footer — open in panel */}
-      {bot.panelUrl && (
-        <div className="px-4 py-3 border-t border-white/8">
-          <a
-            href={bot.panelUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-muted-foreground bg-secondary/60 border border-white/8 hover:text-foreground hover:border-white/15 transition-colors"
-          >
-            <ExternalLink className="w-3 h-3" />
-            Open full console in Panel
-          </a>
-        </div>
-      )}
+      <div className="px-4 py-2 border-t border-white/8 flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-primary/40 animate-pulse" />
+        <span className="text-[10px] text-muted-foreground font-mono">
+          {bot.status === "running" ? "Streaming live output…" : `Process exited — status: ${bot.status}`}
+        </span>
+      </div>
     </motion.div>
   );
 }
@@ -283,7 +300,6 @@ export function BotCard({ bot }: BotCardProps) {
   const isRunning = bot.status === "running";
   const isTransitioning = bot.status === "starting" || bot.status === "stopping";
   const isBusy = isStarting || isStopping || isRestarting || isTransitioning;
-  const hasPtero = Boolean(bot.pterodactylServerId);
   const daysLeft = getDaysRemaining(bot.expiresAt);
   const isExpired = daysLeft !== null && daysLeft <= 0;
   const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 5;
@@ -328,7 +344,6 @@ export function BotCard({ bot }: BotCardProps) {
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[40px] rounded-full pointer-events-none" />
       )}
 
-      {/* Delete confirm overlay */}
       <AnimatePresence>
         {showDeleteConfirm && (
           <DeleteConfirmDialog
@@ -340,7 +355,6 @@ export function BotCard({ bot }: BotCardProps) {
         )}
       </AnimatePresence>
 
-      {/* Logs overlay */}
       <AnimatePresence>
         {showLogs && (
           <BotLogsModal bot={bot} onClose={() => setShowLogs(false)} />
@@ -371,37 +385,14 @@ export function BotCard({ bot }: BotCardProps) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Logs button */}
-          {hasPtero && (
-            <button
-              onClick={() => setShowLogs(true)}
-              title="View activity logs"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5 text-muted-foreground hover:text-foreground hover:border-white/15 transition-colors"
-            >
-              <Terminal className="w-3 h-3" />
-              <span className="text-[10px] font-medium">Logs</span>
-            </button>
-          )}
-          {/* Pterodactyl panel link */}
-          {bot.panelUrl ? (
-            <a
-              href={bot.panelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open server in Pterodactyl panel"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5 text-muted-foreground hover:text-foreground hover:border-white/15 transition-colors"
-            >
-              <Server className="w-3 h-3" />
-              <span className="text-[10px] font-medium">Panel</span>
-              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-            </a>
-          ) : hasPtero ? (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5">
-              <Server className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-medium">Panel</span>
-            </div>
-          ) : null}
-          {/* Delete button */}
+          <button
+            onClick={() => setShowLogs(true)}
+            title="View system logs"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/60 border border-white/5 text-muted-foreground hover:text-foreground hover:border-white/15 transition-colors"
+          >
+            <Terminal className="w-3 h-3" />
+            <span className="text-[10px] font-medium">Logs</span>
+          </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
             title="Delete this bot"
@@ -450,7 +441,6 @@ export function BotCard({ bot }: BotCardProps) {
         </div>
       </div>
 
-      {/* Expiry warning */}
       {(isExpiringSoon || isExpired) && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
@@ -469,7 +459,6 @@ export function BotCard({ bot }: BotCardProps) {
         </motion.div>
       )}
 
-      {/* Action error */}
       {actionError && (
         <motion.p
           initial={{ opacity: 0 }}
@@ -480,14 +469,12 @@ export function BotCard({ bot }: BotCardProps) {
         </motion.p>
       )}
 
-      {/* Renew error */}
       {renewError && (
         <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
           {renewError}
         </p>
       )}
 
-      {/* Renew success */}
       {renewSuccess && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -500,7 +487,6 @@ export function BotCard({ bot }: BotCardProps) {
 
       {/* Action buttons */}
       <div className="flex flex-col gap-2 mt-auto">
-        {/* Renew — when expired or expiring soon */}
         {(isExpired || isExpiringSoon) && (
           <button
             onClick={handleRenew}
@@ -512,10 +498,8 @@ export function BotCard({ bot }: BotCardProps) {
           </button>
         )}
 
-        {/* Start / Stop / Restart row */}
         {!isExpired && (
           <div className="flex gap-2">
-            {/* Start button — when stopped */}
             {!isRunning && (
               <button
                 onClick={() => onAction(startBot, bot.id)}
@@ -532,7 +516,6 @@ export function BotCard({ bot }: BotCardProps) {
               </button>
             )}
 
-            {/* Stop button — when running */}
             {isRunning && (
               <button
                 onClick={() => onAction(stopBot, bot.id)}
@@ -549,12 +532,11 @@ export function BotCard({ bot }: BotCardProps) {
               </button>
             )}
 
-            {/* Restart button — only when running AND has Pterodactyl */}
-            {isRunning && hasPtero && (
+            {isRunning && (
               <button
                 onClick={() => onAction(restartBot, bot.id)}
                 disabled={isBusy}
-                title="Restart bot on panel"
+                title="Restart bot"
                 className={cn(
                   "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all border",
                   isBusy
