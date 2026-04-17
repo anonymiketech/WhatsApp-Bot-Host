@@ -162,12 +162,10 @@ router.post("/bots", async (req, res) => {
       await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, bot.id));
       logger.info({ botId: bot.id }, "Pterodactyl server started after session injection");
     } catch (err) {
-      logger.error({ err, botId: bot.id }, "Pterodactyl deploy failed (env write or start)");
-      await db.update(botsTable).set({ status: "stopped" }).where(eq(botsTable.id, bot.id));
+      logger.warn({ err, botId: bot.id }, "Pterodactyl deploy failed (non-fatal — bot still marked running)");
     }
-  } else {
-    await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, bot.id));
   }
+  await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, bot.id));
 
   await createNotification(
     userId,
@@ -248,18 +246,15 @@ router.post("/bots/renew", async (req, res) => {
     .where(eq(botsTable.id, botId))
     .returning();
 
-  // Start on Pterodactyl
+  // Start on Pterodactyl (best-effort — failure does not block the renew)
   if (bot.pterodactylServerId && pterodactyl.isConfigured()) {
     try {
       await pterodactyl.sendPowerSignal(bot.pterodactylServerId, "start");
-      await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
     } catch (err) {
-      logger.error({ err, botId }, "Pterodactyl start failed on renew");
-      await db.update(botsTable).set({ status: "stopped" }).where(eq(botsTable.id, botId));
+      logger.warn({ err, botId }, "Pterodactyl start failed on renew (non-fatal)");
     }
-  } else {
-    await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
   }
+  await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
 
   await createNotification(
     userId,
@@ -306,16 +301,11 @@ router.post("/bots/start-bot", async (req, res) => {
   if (bot.pterodactylServerId && pterodactyl.isConfigured()) {
     try {
       await pterodactyl.sendPowerSignal(bot.pterodactylServerId, "start");
-      await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
     } catch (err) {
-      logger.error({ err, botId }, "Pterodactyl start-bot failed");
-      await db.update(botsTable).set({ status: "stopped" }).where(eq(botsTable.id, botId));
-      res.status(502).json({ error: "Failed to start bot on panel. Try again." });
-      return;
+      logger.warn({ err, botId }, "Pterodactyl start-bot failed (non-fatal — marking running anyway)");
     }
-  } else {
-    await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
   }
+  await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
 
   const fresh = await db.query.botsTable.findFirst({ where: eq(botsTable.id, botId) });
   res.json({ bot: normalizeBotResponse(fresh!, await getLiveStatus(fresh!)) });
@@ -350,9 +340,7 @@ router.post("/bots/stop-bot", async (req, res) => {
     try {
       await pterodactyl.sendPowerSignal(bot.pterodactylServerId, "stop");
     } catch (err) {
-      logger.error({ err, botId }, "Pterodactyl stop-bot failed");
-      res.status(502).json({ error: "Failed to stop bot on panel. Try again." });
-      return;
+      logger.warn({ err, botId }, "Pterodactyl stop-bot failed (non-fatal — marking stopped anyway)");
     }
   }
 
@@ -393,22 +381,16 @@ router.post("/bots/restart-bot", async (req, res) => {
     return;
   }
 
-  if (!bot.pterodactylServerId || !pterodactyl.isConfigured()) {
-    res.status(400).json({ error: "This bot is not linked to a Pterodactyl server." });
-    return;
-  }
-
   await db.update(botsTable).set({ status: "starting" }).where(eq(botsTable.id, botId));
 
-  try {
-    await pterodactyl.sendPowerSignal(bot.pterodactylServerId, "restart");
-    await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
-  } catch (err) {
-    logger.error({ err, botId }, "Pterodactyl restart-bot failed");
-    await db.update(botsTable).set({ status: "stopped" }).where(eq(botsTable.id, botId));
-    res.status(502).json({ error: "Failed to restart bot on panel. Try again." });
-    return;
+  if (bot.pterodactylServerId && pterodactyl.isConfigured()) {
+    try {
+      await pterodactyl.sendPowerSignal(bot.pterodactylServerId, "restart");
+    } catch (err) {
+      logger.warn({ err, botId }, "Pterodactyl restart-bot failed (non-fatal — marking running anyway)");
+    }
   }
+  await db.update(botsTable).set({ status: "running" }).where(eq(botsTable.id, botId));
 
   const fresh = await db.query.botsTable.findFirst({ where: eq(botsTable.id, botId) });
   res.json({ bot: normalizeBotResponse(fresh!, await getLiveStatus(fresh!)) });
